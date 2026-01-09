@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { scanPlayerByNameAndClan } from "../../api/players";
+import ActivePlayerBadge from "../../components/ActivePlayerBadge/ActivePlayerBadge";
+import { useActivePlayer } from "../../state/ActivePlayerContext";
 import "./Home.css";
 
 import type * as CRTypes from "../../../../shared/types/cr-api-types";
@@ -10,10 +13,13 @@ export default function Home() {
   const [data, setData] = useState<CRTypes.ScanPlayersResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { player: activePlayer, setPlayer } = useActivePlayer();
+  const [showSearchForm, setShowSearchForm] = useState(!activePlayer);
 
   async function onFetch() {
     setErr(null);
     setData(null);
+    setShowSearchForm(true);
 
     if (!playerName.trim() || !clanName.trim()) {
       setErr("Player name and clan name are required");
@@ -38,6 +44,33 @@ export default function Home() {
   const matches = data?.matches ?? [];
   const hasResults = matches.length > 0;
   const noResults = !!data && matches.length === 0;
+  const primaryMatch = matches[0];
+  const showWelcomeCard = !!activePlayer && !showSearchForm && !data && !loading;
+
+  useEffect(() => {
+    if (!primaryMatch) {
+      return;
+    }
+    if (activePlayer?.playerTag === primaryMatch.playerTag) {
+      return;
+    }
+    setPlayer(primaryMatch);
+  }, [activePlayer?.playerTag, primaryMatch, setPlayer]);
+
+  useEffect(() => {
+    if (activePlayer) {
+      setShowSearchForm(false);
+    }
+  }, [activePlayer]);
+
+  function onSwitchPlayer() {
+    setPlayer(null);
+    setData(null);
+    setErr(null);
+    setPlayerName("");
+    setClanName("");
+    setShowSearchForm(true);
+  }
 
   return (
     <div className="home">
@@ -46,6 +79,9 @@ export default function Home() {
       <div className="home__orb home__orb--three" />
 
       <div className="home__layout">
+        <div className="home__topbar">
+          <ActivePlayerBadge />
+        </div>
         <header className="home__hero">
           <div className="home__copy">
             <span className="home__tag">No login. Just clash.</span>
@@ -63,45 +99,82 @@ export default function Home() {
             </div>
           </div>
 
-          <form
-            className="home__form-card"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void onFetch();
-            }}
-          >
-            <div>
-              <h2>Find your player</h2>
-              <div className="home__results-count">
-                Start with the player and clan name.
+          {!showWelcomeCard ? (
+            <form
+              className="home__form-card"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void onFetch();
+              }}
+            >
+              <div>
+                <h2>Find your player</h2>
+                <div className="home__results-count">
+                  Start with the player and clan name.
+                </div>
               </div>
-            </div>
-            <div className="home__form-grid">
-              <label className="home__field">
-                Player name
-                <input
-                  value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
-                  placeholder="e.g. clashbot"
+              <div className="home__form-grid">
+                <label className="home__field">
+                  Player name
+                  <input
+                    value={playerName}
+                    onChange={(e) => setPlayerName(e.target.value)}
+                    placeholder="e.g. clashbot"
+                    disabled={loading}
+                  />
+                </label>
+                <label className="home__field">
+                  Clan name
+                  <input
+                    value={clanName}
+                    onChange={(e) => setClanName(e.target.value)}
+                    placeholder="e.g. supersell"
+                    disabled={loading}
+                  />
+                </label>
+              </div>
+              <div className="home__actions">
+                <button
+                  className="home__primary-btn"
+                  type="submit"
                   disabled={loading}
-                />
-              </label>
-              <label className="home__field">
-                Clan name
-                <input
-                  value={clanName}
-                  onChange={(e) => setClanName(e.target.value)}
-                  placeholder="e.g. supersell"
-                  disabled={loading}
-                />
-              </label>
-            </div>
-            <div className="home__actions">
-              <button className="home__primary-btn" type="submit" disabled={loading}>
-                {loading ? "Searching..." : "Search Clash Royale"}
+                >
+                  {loading ? "Searching..." : "Search Clash Royale"}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="home__active-card">
+              <div>
+                <h2>Welcome back</h2>
+                <div className="home__results-count">
+                  Active player detected.
+                </div>
+              </div>
+              {activePlayer && (
+                <div className="home__active-player">
+                  <strong>{activePlayer.matchedMemberName}</strong>{" "}
+                  <span className="home__match-meta">
+                    {activePlayer.playerTag}
+                  </span>
+                  <div className="home__match-meta">
+                    Clan: {activePlayer.clanName} ({activePlayer.clanTag})
+                  </div>
+                </div>
+              )}
+              <div className="home__action-row">
+                <Link className="home__secondary-btn" to="/ethics">
+                  Ethics check
+                </Link>
+                <Link className="home__primary-btn" to="/builder">
+                  Deck builder
+                </Link>
+              </div>
+              <button className="home__ghost-btn" type="button" onClick={onSwitchPlayer}>
+                Search another player
               </button>
             </div>
-          </form>
+          )}
         </header>
 
         <section className="home__results">
@@ -113,8 +186,39 @@ export default function Home() {
             </div>
           )}
 
-          {hasResults && (
+          {hasResults && primaryMatch && (
             <>
+              <div className="home__found">
+                <div className="home__found-header">
+                  <h3 className="home__found-title">Found player</h3>
+                </div>
+                <div>
+                  <strong>{primaryMatch.matchedMemberName}</strong>{" "}
+                  <span className="home__match-meta">{primaryMatch.playerTag}</span>
+                  <div className="home__match-meta">
+                    Clan: {primaryMatch.clanName} ({primaryMatch.clanTag})
+                  </div>
+                </div>
+                <div className="home__action-row">
+                  <Link
+                    className="home__secondary-btn"
+                    to="/ethics"
+                    state={{ player: primaryMatch }}
+                    onClick={() => setPlayer(primaryMatch)}
+                  >
+                    Ethics check
+                  </Link>
+                  <Link
+                    className="home__primary-btn"
+                    to="/builder"
+                    state={{ player: primaryMatch }}
+                    onClick={() => setPlayer(primaryMatch)}
+                  >
+                    Deck builder
+                  </Link>
+                </div>
+              </div>
+
               <div className="home__results-header">
                 <h3>Matches</h3>
                 <div className="home__results-count">{matches.length} found</div>
@@ -139,13 +243,6 @@ export default function Home() {
                 ))}
               </div>
             </>
-          )}
-
-          {data?.playerDetails && (
-            <details className="home__details">
-              <summary>Raw player details</summary>
-              <pre>{JSON.stringify(data.playerDetails, null, 2)}</pre>
-            </details>
           )}
         </section>
       </div>

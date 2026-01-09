@@ -1,0 +1,28 @@
+.active-player {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(24, 21, 50, 0.75);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.active-player__label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+}
+
+.active-player__name {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.active-player__tag {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--ink);
+  font-size: 0.8rem;
+}

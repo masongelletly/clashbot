@@ -1,3 +1,16 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+:root {
+  --ink: #f4f1ff;
+  --muted: #c7c2e8;
+  --accent: #8f7bff;
+  --accent-strong: #4d9bff;
+  --surface: rgba(18, 16, 40, 0.92);
+  --surface-2: rgba(33, 28, 70, 0.88);
+  --line: rgba(190, 182, 255, 0.22);
+  --shadow: 0 30px 60px rgba(11, 8, 32, 0.55);
+}
+
 *,
 *::before,
 *::after {
@@ -12,8 +25,8 @@ body,
 
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
-  color: #f4f1ff;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  color: var(--ink);
   background: #12102a;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

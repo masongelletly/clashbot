@@ -1,0 +1,11 @@
+@import "../../styles/page.css";
+
+.ethics__card h2 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.ethics__copy {
+  margin: 0;
+  color: var(--muted);
+}
