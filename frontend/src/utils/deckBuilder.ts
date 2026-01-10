@@ -63,7 +63,7 @@ const MINI_SPELLS = new Set(["the log", "giant snowball", "zap", "royal delivery
 const BIG_SPELLS = new Set(["freeze", "fireball", "poison", "rocket", "lightning", "arrows"])
 
 // pure defense
-const DEFENSE = new Set(["ice wizard", "guards", "cannon cart", "fisherman", "little prince", "zappies"])
+// const DEFENSE = new Set(["ice wizard", "guards", "cannon cart", "fisherman", "little prince", "zappies"])
 
 // tanks
 const TANKS = new Set(["giant", "goblin giant", "electro giant", "golem", "elixer golem", "royal giant"])
@@ -243,7 +243,6 @@ export function buildOptimalDeck({
     }
   }
 
-  const deckPool = levelReadyCards.filter((card) => !selectedIds.has(card.id));
   const championWinCons = selectedWinCons.filter(
     (card) => card.rarity?.toLowerCase() === "champion"
   );
