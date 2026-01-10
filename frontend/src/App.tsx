@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Builder from "./pages/Builder/Builder";
 import Ethics from "./pages/Ethics/Ethics";
@@ -7,7 +8,7 @@ import {
   useActivePlayer,
 } from "./state/ActivePlayerContext";
 
-function RequireActivePlayer({ children }: { children: JSX.Element }) {
+function RequireActivePlayer({ children }: { children: ReactElement }) {
   const { player } = useActivePlayer();
 
   if (!player?.playerTag) {

@@ -9,15 +9,24 @@ export type PlayerProfileResponse = {
   wins: number;
   losses: number;
   leagueStatistics: PlayerLeagueStatistics;
+  arena?: {
+    id: number;
+    name?: string;
+  };
   cards: Array<{
     name: string;
     id: number;
     level: number;
-    maxLevel: number;
-    count: number;
+    maxLevel?: number;
+    count?: number;
+    elixirCost: number;
+    evolutionLevel?: number;
+    maxEvolutionLevel?: number;
+    rarity?: string;
     iconUrls?: {
       medium?: string;
       evolutionMedium?: string;
+      heroMedium?: string;
     };
   }>;
 };

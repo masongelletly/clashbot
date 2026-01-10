@@ -40,16 +40,8 @@ export default function Ethics() {
         <section className="page__card ethics__card">
           <h2>You are an angel</h2>
           <p className="ethics__copy">
-            This could be some point system? Or maybe an AI prompt.
+            If frustrated by lack of content, please direct anger toward 'Breggen' of clan 'Plankton'
           </p>
-          {displayPlayer && (
-            <div className="page__player">
-              <strong>{displayPlayer.matchedMemberName}</strong>{" "}
-              <div>
-                {displayPlayer.clanName}
-              </div>
-            </div>
-          )}
           {!displayPlayer && (
             <div className="page__player">
               No player context was provided. Head back and run a search.

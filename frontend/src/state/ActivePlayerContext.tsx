@@ -10,10 +10,13 @@ import type { ReactNode } from "react";
 import type * as CRTypes from "../../../shared/types/cr-api-types";
 
 type ActivePlayer = CRTypes.scanClanForPlayerResponse;
+type PlayerProfile = CRTypes.PlayerProfileResponse;
 
 type ActivePlayerContextValue = {
   player: ActivePlayer | null;
+  playerProfile: PlayerProfile | null;
   setPlayer: (player: ActivePlayer | null) => void;
+  setPlayerProfile: (profile: PlayerProfile | null) => void;
 };
 
 const ActivePlayerContext = createContext<ActivePlayerContextValue | undefined>(
@@ -21,6 +24,7 @@ const ActivePlayerContext = createContext<ActivePlayerContextValue | undefined>(
 );
 
 const STORAGE_KEY = "cr.activePlayer";
+const PROFILE_STORAGE_KEY = "cr.activePlayerProfile";
 
 export function ActivePlayerProvider({
   children,
@@ -41,6 +45,22 @@ export function ActivePlayerProvider({
       return null;
     }
   });
+  const [playerProfile, setPlayerProfileState] = useState<PlayerProfile | null>(
+    () => {
+      if (typeof window === "undefined") {
+        return null;
+      }
+      const stored = window.localStorage.getItem(PROFILE_STORAGE_KEY);
+      if (!stored) {
+        return null;
+      }
+      try {
+        return JSON.parse(stored) as PlayerProfile;
+      } catch {
+        return null;
+      }
+    }
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -53,12 +73,35 @@ export function ActivePlayerProvider({
     }
   }, [player]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (playerProfile) {
+      window.localStorage.setItem(
+        PROFILE_STORAGE_KEY,
+        JSON.stringify(playerProfile)
+      );
+    } else {
+      window.localStorage.removeItem(PROFILE_STORAGE_KEY);
+    }
+  }, [playerProfile]);
+
+  const setPlayer = (nextPlayer: ActivePlayer | null) => {
+    setPlayerState(nextPlayer);
+    if (!nextPlayer) {
+      setPlayerProfileState(null);
+    }
+  };
+
   const value = useMemo(
     () => ({
       player,
-      setPlayer: setPlayerState,
+      playerProfile,
+      setPlayer,
+      setPlayerProfile: setPlayerProfileState,
     }),
-    [player]
+    [player, playerProfile]
   );
 
   return (
