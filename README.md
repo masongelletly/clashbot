@@ -1,0 +1,1 @@
+fun project playing with clash royale api. determines your ethics and your optimal deck. that's it.
