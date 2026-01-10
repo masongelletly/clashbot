@@ -10,6 +10,11 @@
   color: var(--muted);
 }
 
+.builder__meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .builder__deck-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

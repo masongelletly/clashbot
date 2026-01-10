@@ -20,9 +20,13 @@ export type BuildDeckInput = {
 
 export type BuildDeckResult = {
   deck: Array<PlayerCard | null>;
+  averageElixir: number;
 };
 
-const LEVEL_AGNOSTIC_CARDS = new Set(["freeze", "rage", "vines"]);
+const LEVEL_AGNOSTIC_CARDS = new Set(["freeze", "rage", "vines", "skeletons", "skeleton army"]);
+  const TARGET_AVERAGE_ELIXIR = 3.6;
+  const ELIXIR_WEIGHT = 1;
+  const LEVEL_WEIGHT = 2;
 
 // win conditions
 const WIN_CON_OFFENSE = new Set(["boss bandit", "mega knight", "goblin giant", "balloon", "battering ram", "giant", "royal giant", "ram rider", "three musketeers"])
@@ -36,8 +40,8 @@ const SUPPORT = new Set(["skeleton dragons", "night witch", "lumberjack", "witch
 
 // damage dealing
 // - cards to take down big threats
-const GROUND_DAMAGE = new Set(["little prince", "bats", "cannon", "musketeer", "archers", "skeleton army", "goblin gang", "dart goblin", "mini pekka", "prince", "dark prince", "hunter", "furnace", "minion horde", "rascals", "archer queen", "boss bandit", "spirit empress", "flying machine"])
-const AIR_DAMAGE = new Set(["little prince", "bats", "musketeer", "archers", "dart goblin", "hunter", "furnace", "minion horde", "archer queen", "flying machine"])
+const GROUND_DAMAGE = new Set(["little prince", "bats", "cannon", "inferno tower", "musketeer", "archers", "skeleton army", "goblin gang", "dart goblin", "mini pekka", "prince", "dark prince", "hunter", "furnace", "minion horde", "rascals", "archer queen", "boss bandit", "spirit empress", "flying machine"])
+const AIR_DAMAGE = new Set(["little prince", "bats", "musketeer", "inferno tower", "archers", "dart goblin", "hunter", "furnace", "minion horde", "archer queen", "flying machine"])
 
 // structures
 // - buildings
@@ -52,7 +56,7 @@ const CYCLE = new Set(["skeletons", "ice spirit", "fire spirit", "heal spirit", 
 const MINI_TANK = new Set(["fisherman", "berserker", "ice golem", "knight", "valkyrie", "miner", "royal ghost", "dark prince", "golden knight", "skeleton king", "mighty miner"])
 
 // mini spells
-const MINI_SPELLS = new Set(["log", "giant snowball", "zap", "royal delivery", "barbarian barrel", "rage", "goblin curse", "vines", "earthquake"])
+const MINI_SPELLS = new Set(["the log", "giant snowball", "zap", "royal delivery", "barbarian barrel", "rage", "goblin curse", "vines", "earthquake"])
 
 // big spells
 const BIG_SPELLS = new Set(["freeze", "fireball", "poison", "rocket", "lightning", "arrows"])
@@ -75,6 +79,19 @@ export function normalizeCardLevel(card: PlayerCard): number {
   return card.level + rarityOffset;
 }
 
+function getElixirCost(card: PlayerCard): number {
+  return typeof card.elixirCost === "number" ? card.elixirCost : 0;
+}
+
+function calculateAverageElixir(cards: Array<PlayerCard | null>): number {
+  const filled = cards.filter((card): card is PlayerCard => Boolean(card));
+  if (filled.length === 0) {
+    return 0;
+  }
+  const total = filled.reduce((sum, card) => sum + getElixirCost(card), 0);
+  return Number((total / filled.length).toFixed(1));
+}
+
 
 export function buildOptimalDeck({
   cards,
@@ -86,11 +103,13 @@ export function buildOptimalDeck({
   const arenaStats = arenaAverageLevels[arenaId];
   const targetLevel = Math.round(arenaStats?.averageCardLevel ?? 16);
   const minLevel = targetLevel - 1; // one level under rounded average allowed
+  const agnosticMinLevel = targetLevel - 2;
   const levelReadyCards = cards.filter((card) => {
+    const normalizedLevel = normalizeCardLevel(card);
     if (LEVEL_AGNOSTIC_CARDS.has(card.name.toLowerCase())) {
-      return true;
+      return normalizedLevel >= agnosticMinLevel;
     }
-    return normalizeCardLevel(card) >= minLevel;
+    return normalizedLevel >= minLevel;
   });
   const normalizedCards = levelReadyCards.map((card, index) => {
     const typedCard = card as PlayerCard & {
@@ -288,9 +307,17 @@ export function buildOptimalDeck({
     ? Array.from({ length: 8 }, (_, index) => index)
     : [4, 5, 6, 7];
   const nextBaseSlot = () => baseSlots.find((slot) => !slots[slot]) ?? null;
-  const placeInBaseSlot = (card: PlayerCard) => {
+  const placeInBaseSlot = (card: PlayerCard, debugLabel?: string) => {
     const slotIndex = nextBaseSlot();
     if (slotIndex === null || placedIds.has(card.id)) {
+      if (debugLabel) {
+        console.log(`[DeckBuilder] ${debugLabel} placeInBaseSlot skipped`, {
+          card: card.name,
+          hasSlot: slotIndex !== null,
+          alreadyPlaced: placedIds.has(card.id),
+          openBaseSlots: baseSlots.filter((slot) => !slots[slot]),
+        });
+      }
       return false;
     }
     slots[slotIndex] = card;
@@ -303,10 +330,44 @@ export function buildOptimalDeck({
       (card) => card && group.has(card.name.toLowerCase())
     ).length;
 
-  const pickCandidate = (group: Set<string>) =>
-    normalizedCards
-      .filter((entry) => group.has(entry.name) && !placedIds.has(entry.card.id))
-      .sort(sortByLevel)[0];
+  const entryById = new Map(
+    normalizedCards.map((entry) => [entry.card.id, entry])
+  );
+
+  const elixirState = () => {
+    const filled = slots.filter((card): card is PlayerCard => Boolean(card));
+    const total = filled.reduce((sum, card) => sum + getElixirCost(card), 0);
+    return { total, count: filled.length };
+  };
+  const elixirScore = (card: PlayerCard) => {
+    const { total, count } = elixirState();
+    const nextAvg = (total + getElixirCost(card)) / Math.max(1, count + 1);
+    return Math.abs(nextAvg - TARGET_AVERAGE_ELIXIR);
+  };
+  const combinedScore = (card: PlayerCard, level: number) =>
+    LEVEL_WEIGHT * level - ELIXIR_WEIGHT * elixirScore(card);
+  const pickCandidate = (group: Set<string>) => {
+    const candidates = normalizedCards.filter(
+      (entry) => group.has(entry.name) && !placedIds.has(entry.card.id)
+    );
+    return candidates.reduce<typeof normalizedCards[number] | null>(
+      (best, entry) => {
+        if (!best) {
+          return entry;
+        }
+        const score = combinedScore(entry.card, entry.level);
+        const bestScore = combinedScore(best.card, best.level);
+        if (score !== bestScore) {
+          return score > bestScore ? entry : best;
+        }
+        if (entry.level !== best.level) {
+          return entry.level > best.level ? entry : best;
+        }
+        return entry.index < best.index ? entry : best;
+      },
+      null
+    );
+  };
 
   const remainingWinCons = selectedWinCons.filter(
     (card) => !placedIds.has(card.id)
@@ -316,10 +377,16 @@ export function buildOptimalDeck({
   }
 
   const ensureGroup = (group: Set<string>) => {
-    if (countInGroup(group) > 0) {
+    const existingCount = countInGroup(group);
+    if (existingCount > 0) {
       return;
     }
     const candidate = pickCandidate(group);
+    console.log("[DeckBuilder] ensureGroup", {
+      groupSize: group.size,
+      existingCount,
+      candidate: candidate?.card.name ?? null,
+    });
     if (candidate) {
       placeInBaseSlot(candidate.card);
     }
@@ -349,38 +416,156 @@ export function buildOptimalDeck({
 
   const ensureCount = (group: Set<string>, desired: number) => {
     let count = countInGroup(group);
+    if (group === STRUCTURES) {
+      console.log("[DeckBuilder] ensureCount STRUCTURES start", {
+        desired,
+        existingCount: count,
+        openBaseSlots: baseSlots.filter((slot) => !slots[slot]),
+        currentStructureCards: slots
+          .filter((card): card is PlayerCard => Boolean(card))
+          .filter((card) => STRUCTURES.has(card.name.toLowerCase()))
+          .map((card) => card.name),
+      });
+    }
     while (count < desired) {
       const candidate = pickCandidate(group);
+      if (group === STRUCTURES) {
+        console.log("[DeckBuilder] STRUCTURES candidate", {
+          candidate: candidate?.card.name ?? null,
+          level: candidate?.level ?? null,
+        });
+      }
       if (!candidate) {
         break;
       }
-      if (!placeInBaseSlot(candidate.card)) {
+      if (!placeInBaseSlot(candidate.card, "STRUCTURES")) {
         break;
       }
       count += 1;
     }
+    if (group === STRUCTURES) {
+      console.log("[DeckBuilder] ensureCount STRUCTURES end", {
+        finalCount: countInGroup(group),
+        finalStructureCards: slots
+          .filter((card): card is PlayerCard => Boolean(card))
+          .filter((card) => STRUCTURES.has(card.name.toLowerCase()))
+          .map((card) => card.name),
+      });
+    }
+  };
+
+  const pickReplacementSlot = (preferredSlots: number[]) => {
+    const allSlots = slots.map((_, index) => index);
+    const slotCandidates = (slotList: number[]) =>
+      slotList.filter((slot) => {
+        const card = slots[slot];
+        return (
+          card &&
+          !selectedIds.has(card.id) &&
+          !STRUCTURES.has(card.name.toLowerCase())
+        );
+      });
+
+    let candidates = slotCandidates(preferredSlots);
+    if (candidates.length === 0) {
+      candidates = slotCandidates(allSlots.filter((slot) => slot >= 4));
+    }
+    if (candidates.length === 0) {
+      candidates = slotCandidates(allSlots);
+    }
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    return candidates.reduce((bestSlot, slot) => {
+      const bestCard = slots[bestSlot] as PlayerCard;
+      const candidateCard = slots[slot] as PlayerCard;
+      const bestEntry = entryById.get(bestCard.id);
+      const candidateEntry = entryById.get(candidateCard.id);
+      const bestScore = bestEntry
+        ? combinedScore(bestEntry.card, bestEntry.level)
+        : combinedScore(bestCard, normalizeCardLevel(bestCard));
+      const candidateScore = candidateEntry
+        ? combinedScore(candidateEntry.card, candidateEntry.level)
+        : combinedScore(candidateCard, normalizeCardLevel(candidateCard));
+      return candidateScore < bestScore ? slot : bestSlot;
+    }, candidates[0]);
+  };
+
+  const forceInsertGroup = (group: Set<string>, label: string) => {
+    if (countInGroup(group) > 0) {
+      return;
+    }
+    const candidate = pickCandidate(group);
+    if (!candidate) {
+      return;
+    }
+    const preferred = baseSlots.filter((slot) => slot >= 4);
+    const replaceSlot = pickReplacementSlot(preferred);
+    if (replaceSlot === null) {
+      return;
+    }
+    const replaced = slots[replaceSlot];
+    console.log(`[DeckBuilder] forceInsert ${label}`, {
+      replaceSlot,
+      replaced: replaced?.name ?? null,
+      incoming: candidate.card.name,
+    });
+    if (replaced) {
+      placedIds.delete(replaced.id);
+    }
+    slots[replaceSlot] = candidate.card;
+    placedIds.add(candidate.card.id);
   };
 
   if (winConType === "defense" || winConType === "secondary") {
+    console.log("[DeckBuilder] winConType constraints", winConType);
     ensureCount(MINI_TANK, 1);
     ensureCount(CYCLE, 2);
     ensureCount(STRUCTURES, 1);
+    forceInsertGroup(STRUCTURES, "STRUCTURES");
   } else if (winConType === "offense") {
+    console.log("[DeckBuilder] winConType constraints", winConType);
     ensureCount(MINI_TANK, 1);
     ensureCount(CYCLE, 1);
     ensureCount(STRUCTURES, 1);
+    forceInsertGroup(STRUCTURES, "STRUCTURES");
   } else if (winConType === "beatdown") {
+    console.log("[DeckBuilder] winConType constraints", winConType);
     ensureCount(SUPPORT, 2);
   }
 
-  const remainingCards = normalizedCards
-    .filter((entry) => !placedIds.has(entry.card.id))
-    .sort(sortByLevel);
-  for (const entry of remainingCards) {
-    if (!placeInBaseSlot(entry.card)) {
+  let remainingCandidates = normalizedCards.filter(
+    (entry) => !placedIds.has(entry.card.id)
+  );
+  while (nextBaseSlot() !== null && remainingCandidates.length > 0) {
+    const bestCandidate = remainingCandidates.reduce<
+      typeof normalizedCards[number] | null
+    >((best, entry) => {
+      if (!best) {
+        return entry;
+      }
+      const score = combinedScore(entry.card, entry.level);
+      const bestScore = combinedScore(best.card, best.level);
+      if (score !== bestScore) {
+        return score > bestScore ? entry : best;
+      }
+      if (entry.level !== best.level) {
+        return entry.level > best.level ? entry : best;
+      }
+      return entry.index < best.index ? entry : best;
+    }, null);
+    if (!bestCandidate) {
+      break;
+    }
+    if (placeInBaseSlot(bestCandidate.card)) {
+      remainingCandidates = remainingCandidates.filter(
+        (entry) => entry.card.id !== bestCandidate.card.id
+      );
+    } else {
       break;
     }
   }
 
-  return { deck: slots };
+  return { deck: slots, averageElixir: calculateAverageElixir(slots) };
 }

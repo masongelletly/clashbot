@@ -18,14 +18,15 @@ export default function Builder() {
   const player = state?.player;
   const { player: activePlayer, playerProfile } = useActivePlayer();
   const displayPlayer = player ?? activePlayer;
-  const deckCards = playerProfile
+  const deckBuild = playerProfile
     ? buildOptimalDeck({
         cards: playerProfile.cards,
         trophies: playerProfile.trophies,
         arenaId: playerProfile.arena?.id ?? 0,
-      }).deck
-    : [];
-  console.log(playerProfile?.arena?.id)
+      })
+    : { deck: [], averageElixir: 0 };
+  const deckCards = deckBuild.deck;
+  const averageElixir = deckBuild.averageElixir;
   const deckSlots = Array.from({ length: 8 }, (_, index) => deckCards[index] ?? null);
   const cardNameFallback = (card: CRTypes.PlayerProfileResponse["cards"][number]) => {
     if (typeof card.name === "string") {
@@ -74,6 +75,9 @@ export default function Builder() {
           <p className="builder__copy">
             This is your best possible deck considering card levels, trophies, and meta.
           </p>
+          <div className="builder__meta">
+            Average elixir: {averageElixir ? averageElixir.toFixed(1) : "—"}
+          </div>
           <div className="builder__deck-grid" aria-label="Optimal deck slots">
             {deckSlots.map((card, index) => {
               const isEvolutionSlot = index < 2;
