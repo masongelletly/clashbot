@@ -1,6 +1,6 @@
-import * as CRTypes from "../../../shared/types/cr-api-types";
-import * as CRUtils from "../utils/utils";
-import { crFetch } from "../crFetch"; 
+import type * as CRTypes from "../../../shared/types/cr-api-types";
+import * as CRUtils from "../utils/utils.js";
+import { crFetch } from "../crFetch.js";
 
 
 export async function getPlayerDetails(

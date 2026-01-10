@@ -2,9 +2,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import * as CRTypes from "../../../shared/types/cr-api-types";
-import { crFetch } from "../crFetch";
-import { encodeTag, sleep } from "../utils/utils";
+import type * as CRTypes from "../../../shared/types/cr-api-types";
+import { crFetch } from "../crFetch.js";
+import { encodeTag, sleep } from "../utils/utils.js";
 
 type BattleLogEntry = {
   arenaId?: number;

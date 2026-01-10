@@ -1,8 +1,8 @@
-import * as CRTypes from "../../../shared/types/cr-api-types";
-import * as CRUtils from "../utils/utils";
-import * as CRErrors from "../errors/cr-errors";
+import type * as CRTypes from "../../../shared/types/cr-api-types";
+import * as CRUtils from "../utils/utils.js";
+import * as CRErrors from "../errors/cr-errors.js";
 
-import { crFetch } from "../crFetch";
+import { crFetch } from "../crFetch.js";
 
 
 export async function scanClanForPlayer(

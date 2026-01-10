@@ -2,9 +2,9 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 
-import { scanClanForPlayer } from "./services/clans"
-import { getPlayerDetails } from "./services/players";
-import { crFetch } from "./crFetch";
+import { scanClanForPlayer } from "./services/clans.js";
+import { getPlayerDetails } from "./services/players.js";
+import { crFetch } from "./crFetch.js";
 
 const BASE_URL = "https://api.clashroyale.com/v1";
 const apiKey = process.env.CLASH_ROYALE_API_KEY;
