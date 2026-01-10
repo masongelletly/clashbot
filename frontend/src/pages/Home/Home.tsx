@@ -13,7 +13,7 @@ export default function Home() {
   const [data, setData] = useState<CRTypes.ScanPlayersResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const { player: activePlayer, setPlayer } = useActivePlayer();
+  const { player: activePlayer, setPlayer, setPlayerProfile } = useActivePlayer();
   const [showSearchForm, setShowSearchForm] = useState(!activePlayer);
 
   async function onFetch() {
@@ -58,6 +58,13 @@ export default function Home() {
   }, [activePlayer?.playerTag, primaryMatch, setPlayer]);
 
   useEffect(() => {
+    if (!data?.playerDetails) {
+      return;
+    }
+    setPlayerProfile(data.playerDetails);
+  }, [data?.playerDetails, setPlayerProfile]);
+
+  useEffect(() => {
     if (activePlayer) {
       setShowSearchForm(false);
     }
@@ -84,7 +91,6 @@ export default function Home() {
         </div>
         <header className="home__hero">
           <div className="home__copy">
-            <span className="home__tag">No login. Just clash.</span>
             <h1>Clashbot</h1>
             <p>
               Clashbot is a Clash Royale deck builder and ethics evaluator. Player name and Clan name are required to retrieve your information.
@@ -163,7 +169,7 @@ export default function Home() {
                 </div>
               )}
               <div className="home__action-row">
-                <Link className="home__secondary-btn" to="/ethics">
+                <Link className="home__primary-btn" to="/ethics">
                   Ethics check
                 </Link>
                 <Link className="home__primary-btn" to="/builder">
