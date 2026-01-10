@@ -124,14 +124,6 @@ export default function Builder() {
               );
             })}
           </div>
-          {displayPlayer && (
-            <div className="page__player">
-              <strong>{displayPlayer.matchedMemberName}</strong>{" "}
-              <div>
-                {displayPlayer.clanName}
-              </div>
-            </div>
-          )}
           {!displayPlayer && (
             <div className="page__player">
               No player context was provided. Head back and run a search.

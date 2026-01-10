@@ -1,5 +1,6 @@
 import type * as CRTypes from "../../../shared/types/cr-api-types";
 import { arenaAverageLevels } from "../config/arenaAverageLevels";
+import { cardWinRates } from "../config/cardWinRates";
 
 export type PlayerCard = CRTypes.PlayerProfileResponse["cards"][number];
 
@@ -36,7 +37,7 @@ const WIN_CON_BEATDOWN = new Set(["elixir golem", "golem", "lava hound", "electr
 
 // support cards 
 // - cards that primarily support pushes 
-const SUPPORT = new Set(["skeleton dragons", "night witch", "lumberjack", "witch", "furnace", "electro dragon", "mini pekka", "battle healer", "goblin demolisher", "prince", "wizard", "executioner", "sparky"])
+const SUPPORT = new Set(["baby dragon", "skeleton dragons", "night witch", "lumberjack", "witch", "furnace", "electro dragon", "mini pekka", "battle healer", "goblin demolisher", "prince", "wizard", "executioner", "sparky"])
 
 // damage dealing
 // - cards to take down big threats
@@ -63,6 +64,9 @@ const BIG_SPELLS = new Set(["freeze", "fireball", "poison", "rocket", "lightning
 
 // pure defense
 const DEFENSE = new Set(["ice wizard", "guards", "cannon cart", "fisherman", "little prince", "zappies"])
+
+// tanks
+const TANKS = new Set(["giant", "goblin giant", "electro giant", "golem", "elixer golem", "royal giant"])
 
 
 export function normalizeCardLevel(card: PlayerCard): number {
@@ -91,6 +95,18 @@ function calculateAverageElixir(cards: Array<PlayerCard | null>): number {
   const total = filled.reduce((sum, card) => sum + getElixirCost(card), 0);
   return Number((total / filled.length).toFixed(1));
 }
+
+const getCardWinRate = (card: PlayerCard): number => {
+  const idEntry = cardWinRates[String(card.id)];
+  if (idEntry && Number.isFinite(idEntry.winRate)) {
+    return idEntry.winRate;
+  }
+  const nameEntry = cardWinRates[`name:${card.name.toLowerCase()}`];
+  if (nameEntry && Number.isFinite(nameEntry.winRate)) {
+    return nameEntry.winRate;
+  }
+  return 0;
+};
 
 
 export function buildOptimalDeck({
@@ -169,6 +185,10 @@ export function buildOptimalDeck({
         if (b.level !== a.level) {
           return b.level - a.level;
         }
+        const winRateDiff = getCardWinRate(b.card) - getCardWinRate(a.card);
+        if (winRateDiff !== 0) {
+          return winRateDiff;
+        }
         return a.index - b.index;
       });
     let secondaryCount = 0;
@@ -185,6 +205,10 @@ export function buildOptimalDeck({
     [...entries].sort((a, b) => {
       if (b.level !== a.level) {
         return b.level - a.level;
+      }
+      const winRateDiff = getCardWinRate(b.card) - getCardWinRate(a.card);
+      if (winRateDiff !== 0) {
+        return winRateDiff;
       }
       return a.index - b.index;
     })[0];
@@ -231,6 +255,10 @@ export function buildOptimalDeck({
   ) => {
     if (b.level !== a.level) {
       return b.level - a.level;
+    }
+    const winRateDiff = getCardWinRate(b.card) - getCardWinRate(a.card);
+    if (winRateDiff !== 0) {
+      return winRateDiff;
     }
     return a.index - b.index;
   };
@@ -362,6 +390,10 @@ export function buildOptimalDeck({
         }
         if (entry.level !== best.level) {
           return entry.level > best.level ? entry : best;
+        }
+        const winRateDiff = getCardWinRate(entry.card) - getCardWinRate(best.card);
+        if (winRateDiff !== 0) {
+          return winRateDiff > 0 ? entry : best;
         }
         return entry.index < best.index ? entry : best;
       },
@@ -553,6 +585,10 @@ export function buildOptimalDeck({
       if (entry.level !== best.level) {
         return entry.level > best.level ? entry : best;
       }
+      const winRateDiff = getCardWinRate(entry.card) - getCardWinRate(best.card);
+      if (winRateDiff !== 0) {
+        return winRateDiff > 0 ? entry : best;
+      }
       return entry.index < best.index ? entry : best;
     }, null);
     if (!bestCandidate) {
@@ -564,6 +600,62 @@ export function buildOptimalDeck({
       );
     } else {
       break;
+    }
+  }
+
+  const isTank = (card: PlayerCard) => TANKS.has(card.name.toLowerCase());
+  const tankSlots = slots
+    .map((card, index) => (card && isTank(card) ? index : null))
+    .filter((slot): slot is number => slot !== null);
+  if (tankSlots.length > 1) {
+    const getEntryLevel = (card: PlayerCard) => {
+      const entry = entryById.get(card.id);
+      return entry?.level ?? normalizeCardLevel(card);
+    };
+    const keepSlot = tankSlots.reduce((bestSlot, slot) => {
+      const bestCard = slots[bestSlot] as PlayerCard;
+      const candidateCard = slots[slot] as PlayerCard;
+      const bestScore = combinedScore(bestCard, getEntryLevel(bestCard));
+      const candidateScore = combinedScore(
+        candidateCard,
+        getEntryLevel(candidateCard)
+      );
+      if (candidateScore !== bestScore) {
+        return candidateScore > bestScore ? slot : bestSlot;
+      }
+      return slot < bestSlot ? slot : bestSlot;
+    }, tankSlots[0]);
+
+    for (const slot of tankSlots) {
+      if (slot === keepSlot) {
+        continue;
+      }
+      const outgoing = slots[slot];
+      if (outgoing) {
+        placedIds.delete(outgoing.id);
+      }
+      const replacement = normalizedCards
+        .filter(
+          (entry) =>
+            !placedIds.has(entry.card.id) && !TANKS.has(entry.name)
+        )
+        .sort((a, b) => {
+          const scoreA = combinedScore(a.card, a.level);
+          const scoreB = combinedScore(b.card, b.level);
+          if (scoreA !== scoreB) {
+            return scoreB - scoreA;
+          }
+          const winRateDiff = getCardWinRate(b.card) - getCardWinRate(a.card);
+          if (winRateDiff !== 0) {
+            return winRateDiff;
+          }
+          return a.index - b.index;
+        })[0];
+
+      if (replacement) {
+        slots[slot] = replacement.card;
+        placedIds.add(replacement.card.id);
+      }
     }
   }
 

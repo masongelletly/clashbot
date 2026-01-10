@@ -9,8 +9,26 @@ import { encodeTag, sleep } from "../utils/utils";
 type BattleLogEntry = {
   arenaId?: number;
   arena?: { id?: number };
-  team?: Array<{ cards?: Array<{ level?: number; maxLevel?: number; rarity?: string }> }>;
-  opponent?: Array<{ cards?: Array<{ level?: number; maxLevel?: number; rarity?: string }> }>;
+  team?: Array<{
+    crowns?: number;
+    cards?: Array<{
+      id?: number;
+      name?: string;
+      level?: number;
+      maxLevel?: number;
+      rarity?: string;
+    }>;
+  }>;
+  opponent?: Array<{
+    crowns?: number;
+    cards?: Array<{
+      id?: number;
+      name?: string;
+      level?: number;
+      maxLevel?: number;
+      rarity?: string;
+    }>;
+  }>;
 };
 
 type ArenaAccumulator = {
@@ -44,15 +62,39 @@ type MergedAccumulator = {
   playerCount: number;
 };
 
+type CardWinRateEntry = {
+  cardId: number | null;
+  name: string;
+  wins: number;
+  losses: number;
+  totalGames: number;
+  winRate: number;
+  lastUpdated: string;
+};
+
+type CardStatsAccumulator = {
+  cardId: number | null;
+  name: string;
+  wins: number;
+  losses: number;
+};
+
 const CLAN_DISCOVERY_QUERIES: string[] = [
-  "neutral",
-  "steelers",
-  "eagles",
-  "bears",
-  "baseball"
+  "winning",
+  "losing",
+  "body",
+  "coffee",
+  "jynx",
+  "large",
+  "bien",
+  "spanish",
+  "peanuts",
+  "major",
+  "general",
+  "bean"
 ];
 const COMMON_MAX_LEVEL = 16;
-const MAX_CLANS = Number(process.env.ARENA_CLAN_LIMIT ?? 50);
+const MAX_CLANS = Number(process.env.ARENA_CLAN_LIMIT ?? 100);
 const MAX_MEMBERS_PER_CLAN = Number(process.env.ARENA_MEMBER_LIMIT ?? 50);
 const MAX_BATTLES_PER_PLAYER = Number(process.env.ARENA_BATTLE_LIMIT ?? 10);
 const BATTLE_DELAY_MS = Number(process.env.ARENA_BATTLE_DELAY_MS ?? 150);
@@ -64,6 +106,10 @@ const __dirname = path.dirname(__filename);
 const CONFIG_PATH = path.resolve(
   __dirname,
   "../../../frontend/src/config/arenaAverageLevels.ts"
+);
+const CARD_CONFIG_PATH = path.resolve(
+  __dirname,
+  "../../../frontend/src/config/cardWinRates.ts"
 );
 
 async function fetchClanMembers(clanTag: string) {
@@ -129,6 +175,48 @@ function getBattleCards(battle: BattleLogEntry) {
   ) as Array<{ level: number; maxLevel?: number; rarity?: string }>;
 }
 
+function getBattleOutcome(battle: BattleLogEntry) {
+  const teamCrowns = battle.team?.[0]?.crowns;
+  const opponentCrowns = battle.opponent?.[0]?.crowns;
+  if (typeof teamCrowns !== "number" || typeof opponentCrowns !== "number") {
+    return null;
+  }
+  if (teamCrowns === opponentCrowns) {
+    return null;
+  }
+  return teamCrowns > opponentCrowns ? "team" : "opponent";
+}
+
+function recordCardStats(
+  stats: Map<string, CardStatsAccumulator>,
+  cards: Array<{ id?: number; name?: string }>,
+  didWin: boolean
+) {
+  for (const card of cards) {
+    const key =
+      typeof card.id === "number"
+        ? String(card.id)
+        : card.name
+          ? `name:${card.name.toLowerCase()}`
+          : null;
+    if (!key) {
+      continue;
+    }
+    const existing = stats.get(key) ?? {
+      cardId: typeof card.id === "number" ? card.id : null,
+      name: card.name ?? "Unknown",
+      wins: 0,
+      losses: 0,
+    };
+    if (didWin) {
+      existing.wins += 1;
+    } else {
+      existing.losses += 1;
+    }
+    stats.set(key, existing);
+  }
+}
+
 function ensureArena(acc: Map<number, ArenaAccumulator>, arenaId: number) {
   const existing = acc.get(arenaId);
   if (existing) {
@@ -147,6 +235,7 @@ function ensureArena(acc: Map<number, ArenaAccumulator>, arenaId: number) {
 
 async function buildArenaAverages() {
   const arenaAccumulators = new Map<number, ArenaAccumulator>();
+  const cardStats = new Map<string, CardStatsAccumulator>();
   const searchTerms = [
     ...CLAN_DISCOVERY_QUERIES,
   ].filter(Boolean);
@@ -183,13 +272,21 @@ async function buildArenaAverages() {
         arenaStats.battleCount += 1;
         arenaStats.clanTags.add(clan.tag);
         arenaStats.playerTags.add(member.tag);
+
+        const outcome = getBattleOutcome(battle);
+        if (outcome) {
+          const teamCards = battle.team?.[0]?.cards ?? [];
+          const opponentCards = battle.opponent?.[0]?.cards ?? [];
+          recordCardStats(cardStats, teamCards, outcome === "team");
+          recordCardStats(cardStats, opponentCards, outcome === "opponent");
+        }
       }
 
       await sleep(BATTLE_DELAY_MS);
     }
   }
 
-  return arenaAccumulators;
+  return { arenaAccumulators, cardStats };
 }
 
 function renderConfig(
@@ -231,8 +328,52 @@ ${lines.join("\n")}
 `;
 }
 
+function renderCardConfig(
+  cardStats: Map<string, CardStatsAccumulator>,
+  lastUpdated: string
+) {
+  const entries = Array.from(cardStats.entries()).sort(([a], [b]) =>
+    a.localeCompare(b)
+  );
+
+  const lines = entries.map(([key, stats]) => {
+    const totalGames = stats.wins + stats.losses;
+    const winRate = totalGames
+      ? Number(((stats.wins / totalGames) * 100).toFixed(2))
+      : 0;
+    return `  "${key}": {
+    cardId: ${stats.cardId ?? "null"},
+    name: "${stats.name.replace(/"/g, '\\"')}",
+    wins: ${stats.wins},
+    losses: ${stats.losses},
+    totalGames: ${totalGames},
+    winRate: ${winRate},
+    lastUpdated: "${lastUpdated}",
+  },`;
+  });
+
+  return `export type CardWinRateEntry = {
+  cardId: number | null;
+  name: string;
+  wins: number;
+  losses: number;
+  totalGames: number;
+  winRate: number;
+  lastUpdated: string;
+};
+
+export const cardWinRates: Record<string, CardWinRateEntry> = {
+${lines.join("\n")}
+};
+`;
+}
+
 async function writeConfig(contents: string) {
   await fs.writeFile(CONFIG_PATH, contents, "utf-8");
+}
+
+async function writeCardConfig(contents: string) {
+  await fs.writeFile(CARD_CONFIG_PATH, contents, "utf-8");
 }
 
 async function loadExistingConfig() {
@@ -247,6 +388,17 @@ async function loadExistingConfig() {
     number,
     ArenaAverageLevelEntry
   >;
+}
+
+async function loadExistingCardConfig() {
+  try {
+    await fs.access(CARD_CONFIG_PATH);
+  } catch {
+    return {} as Record<string, CardWinRateEntry>;
+  }
+
+  const configModule = await import(pathToFileURL(CARD_CONFIG_PATH).href);
+  return (configModule.cardWinRates ?? {}) as Record<string, CardWinRateEntry>;
 }
 
 function mergeArenaStats(
@@ -289,6 +441,37 @@ function mergeArenaStats(
   return merged;
 }
 
+function mergeCardStats(
+  existing: Record<string, CardWinRateEntry>,
+  latest: Map<string, CardStatsAccumulator>
+) {
+  const merged = new Map<string, CardStatsAccumulator>();
+
+  for (const [key, entry] of Object.entries(existing)) {
+    merged.set(key, {
+      cardId: entry.cardId ?? null,
+      name: entry.name,
+      wins: entry.wins,
+      losses: entry.losses,
+    });
+  }
+
+  for (const [key, stats] of latest.entries()) {
+    const current =
+      merged.get(key) ?? {
+        cardId: stats.cardId,
+        name: stats.name,
+        wins: 0,
+        losses: 0,
+      };
+    current.wins += stats.wins;
+    current.losses += stats.losses;
+    merged.set(key, current);
+  }
+
+  return merged;
+}
+
 async function main() {
   if (CLAN_DISCOVERY_QUERIES.length === 0) {
     throw new Error(
@@ -297,10 +480,13 @@ async function main() {
   }
 
   const existingConfig = await loadExistingConfig();
-  const arenaStats = await buildArenaAverages();
-  const mergedStats = mergeArenaStats(existingConfig, arenaStats);
-  const output = renderConfig(mergedStats, new Date().toISOString());
-  await writeConfig(output);
+  const existingCardConfig = await loadExistingCardConfig();
+  const { arenaAccumulators, cardStats } = await buildArenaAverages();
+  const mergedStats = mergeArenaStats(existingConfig, arenaAccumulators);
+  const mergedCardStats = mergeCardStats(existingCardConfig, cardStats);
+  const lastUpdated = new Date().toISOString();
+  await writeConfig(renderConfig(mergedStats, lastUpdated));
+  await writeCardConfig(renderCardConfig(mergedCardStats, lastUpdated));
 }
 
 void main();
