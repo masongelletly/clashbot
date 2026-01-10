@@ -9,12 +9,30 @@ import { crFetch } from "./crFetch";
 const BASE_URL = "https://api.clashroyale.com/v1";
 const apiKey = process.env.CLASH_ROYALE_API_KEY;
 
+const DEFAULT_CORS_ORIGINS = ["http://localhost:5173"];
+const envCorsOrigins = (process.env.CORS_ORIGIN ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const allowedCorsOrigins = new Set([...DEFAULT_CORS_ORIGINS, ...envCorsOrigins]);
+const allowAnyCorsOrigin = allowedCorsOrigins.has("*");
+
 // connect with our local frontend
 const app = express();
 app.use(express.json());
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin(origin, callback) {
+      if (!origin || allowAnyCorsOrigin) {
+        callback(null, true);
+        return;
+      }
+      if (allowedCorsOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
   })
 );
 if (!apiKey) {
@@ -47,4 +65,3 @@ app.get("/api/players/scan", async (req, res) => {
     res.status(400).send(e?.message ?? String(e));
   }
 });
-
