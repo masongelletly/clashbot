@@ -4,6 +4,7 @@ import cors from "cors";
 
 import { scanClanForPlayer } from "./services/clans.js";
 import { getPlayerDetails } from "./services/players.js";
+import { calculateEthicsScore } from "./services/ethics.js";
 import { crFetch } from "./crFetch.js";
 
 const BASE_URL = "https://api.clashroyale.com/v1";
@@ -63,5 +64,100 @@ app.get("/api/players/scan", async (req, res) => {
     return res.json({ matches, playerDetails });
   } catch (e: any) {
     res.status(400).send(e?.message ?? String(e));
+  }
+});
+
+// GET /api/ethics?playerTag=<tag>
+app.get("/api/ethics", async (req, res) => {
+  try {
+    const playerTag = String(req.query.playerTag ?? "");
+    if (!playerTag) {
+      return res.status(400).send("playerTag is required");
+    }
+
+    const ethicsResult = await calculateEthicsScore(playerTag);
+    return res.json(ethicsResult);
+  } catch (e: any) {
+    res.status(400).send(e?.message ?? String(e));
+  }
+});
+
+// GET /api/test-badges?playerTag=<tag> - Test endpoint to see badge data
+app.get("/api/test-badges", async (req, res) => {
+  try {
+    const playerTag = String(req.query.playerTag ?? "");
+    if (!playerTag) {
+      return res.status(400).send("playerTag is required");
+    }
+
+    const { getPlayerDetails } = await import("./services/players.js");
+    const playerProfile = await getPlayerDetails(playerTag);
+
+    // Get all badges
+    const allBadges = playerProfile.badges ?? [];
+    console.log(`Total badges found: ${allBadges.length}`);
+
+    // Filter to only badges with a target (card-related badges)
+    const cardBadges = allBadges.filter(badge => badge.target != null && badge.target !== undefined);
+    console.log(`Card-related badges: ${cardBadges.length}`);
+
+    // Get the first card-related badge
+    const testBadge = cardBadges[0];
+
+    if (!testBadge) {
+      return res.json({
+        success: false,
+        message: "No card-related badges found",
+        totalBadges: allBadges.length,
+        cardBadges: cardBadges.length,
+        allBadgesSample: allBadges.slice(0, 3).map(b => ({
+          name: b.name,
+          hasTarget: b.target != null,
+          target: b.target,
+          level: b.level,
+          maxLevel: b.maxLevel,
+          progress: b.progress
+        }))
+      });
+    }
+
+    // Find the associated card
+    const associatedCard = playerProfile.cards.find(c => c.id === testBadge.target);
+
+    return res.json({
+      success: true,
+      totalBadges: allBadges.length,
+      cardRelatedBadges: cardBadges.length,
+      testBadge: {
+        name: testBadge.name,
+        level: testBadge.level,
+        maxLevel: testBadge.maxLevel,
+        progress: testBadge.progress,
+        target: testBadge.target,
+        iconUrls: testBadge.iconUrls,
+        fullBadge: testBadge
+      },
+      associatedCard: associatedCard ? {
+        id: associatedCard.id,
+        name: associatedCard.name,
+        level: associatedCard.level,
+        elixirCost: associatedCard.elixirCost,
+        iconUrls: associatedCard.iconUrls
+      } : null,
+      allCardBadges: cardBadges.map(b => ({
+        name: b.name,
+        target: b.target,
+        level: b.level,
+        maxLevel: b.maxLevel,
+        progress: b.progress
+      }))
+    });
+  } catch (e: any) {
+    console.error("Error in test-badges endpoint:", e);
+    res.status(400).json({
+      success: false,
+      error: e?.message ?? String(e),
+      stack: e?.stack
+    });
   }
 });
