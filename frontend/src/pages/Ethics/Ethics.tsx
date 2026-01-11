@@ -3,9 +3,11 @@ import { Link, useLocation } from "react-router-dom";
 import ActivePlayerBadge from "../../components/ActivePlayerBadge/ActivePlayerBadge";
 import { useActivePlayer } from "../../state/ActivePlayerContext";
 import { getEthicsScore } from "../../api/ethics";
+import { normalizeCardLevel } from "../../utils/deckBuilder";
 import "./Ethics.css";
 
 import type * as CRTypes from "../../../../shared/types/cr-api-types";
+import type { PlayerCard } from "../../utils/deckBuilder";
 
 type PlayerMatch = CRTypes.scanClanForPlayerResponse;
 
@@ -188,8 +190,8 @@ export default function Ethics() {
                       };
                       
                       const cardName = cardNameFallback(slot.name);
-                      const cardLevel = slot.level;
-                      
+                      const cardLevel = normalizeCardLevel(slot as PlayerCard);    
+                                        
                       return (
                         <div
                           key={`${slot.id}-${index}`}
