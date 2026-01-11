@@ -28,6 +28,26 @@ function calculateGradientPosition(score: number): number {
   return clamped * 100;
 }
 
+function formatDonationRatio(ratio: number): string {
+  if (!Number.isFinite(ratio)) {
+    return "—";
+  }
+  if (ratio < 1) {
+    return Math.round(ratio * 100).toString();
+  }
+  return ratio.toFixed(2);
+}
+
+function scoreColor(score: number): string | null {
+  if (score > 0) {
+    return "#28a745";
+  }
+  if (score < 0) {
+    return "#dc3545";
+  }
+  return null;
+}
+
 export default function Ethics() {
   const location = useLocation();
   const state = location.state as EthicsLocationState | null;
@@ -59,6 +79,13 @@ export default function Ethics() {
   }, [displayPlayer?.playerTag]);
 
   const gradientPosition = ethicsData ? calculateGradientPosition(ethicsData.ethicsScore) : 50;
+  const donationRatioDisplay = ethicsData
+    ? formatDonationRatio(ethicsData.donationRatio)
+    : "—";
+  const deckScoreColor = ethicsData ? scoreColor(ethicsData.deckScore) : null;
+  const donationScoreColor = ethicsData
+    ? scoreColor(ethicsData.donationScore)
+    : null;
 
   return (
     <div className="page ethics">
@@ -100,11 +127,11 @@ export default function Ethics() {
               <div className="ethics__score-display">
                 <div className="ethics__score-value">{ethicsData.ethicsScore.toFixed(2)}</div>
                 <div className="ethics__score-breakdown">
-                  <span>Deck: {ethicsData.deckScore.toFixed(2)}</span>
+                  <span style={deckScoreColor ? { color: deckScoreColor } : undefined}>
+                    Deck: {ethicsData.deckScore.toFixed(2)}
+                  </span>
                   <span 
-                    style={{ 
-                      color: ethicsData.donationScore > 0 ? '#28a745' : ethicsData.donationScore < 0 ? '#dc3545' : '#6c757d' 
-                    }}
+                    style={donationScoreColor ? { color: donationScoreColor } : undefined}
                   >
                     Donations: {ethicsData.donationScore > 0 ? '+' : ''}{ethicsData.donationScore.toFixed(2)}
                   </span>
@@ -114,7 +141,7 @@ export default function Ethics() {
                     {ethicsData.donationsReceived} received / {ethicsData.donations} donated
                     {ethicsData.donations > 0 && (
                       <span className="ethics__donation-ratio">
-                        {' '}({ethicsData.donationRatio.toFixed(2)}:1 ratio)
+                        {' '}({donationRatioDisplay}:1 ratio)
                       </span>
                     )}
                   </span>
@@ -139,7 +166,7 @@ export default function Ethics() {
 
               {/* Current Battle Deck */}
               <div className="ethics__deck">
-                <h3>Current Battle Deck</h3>
+                <h3>Your Battle Deck</h3>
                 {ethicsData.deckSlots.some(slot => slot !== null) ? (
                   <div className="ethics__deck-grid" aria-label="Current battle deck slots">
                     {ethicsData.deckSlots.map((slot, index) => {
@@ -188,13 +215,6 @@ export default function Ethics() {
                           >
                             {slot.weight > 0 ? '+' : ''}{slot.weight.toFixed(2)}
                           </div>
-                          {(slot.isEvo || slot.isHero) && (
-                            <div className="ethics__card-variant">
-                              {slot.isEvo && 'Evo'}
-                              {slot.isEvo && slot.isHero && ' / '}
-                              {slot.isHero && 'Hero'}
-                            </div>
-                          )}
                         </div>
                       );
                     })}
