@@ -28,14 +28,15 @@ function calculateGradientPosition(score: number): number {
   return clamped * 100;
 }
 
-function formatDonationRatio(ratio: number): string {
-  if (!Number.isFinite(ratio)) {
+function formatDonationRatio(donated: number, received: number): string {
+  if (!Number.isFinite(donated) || !Number.isFinite(received)) {
     return "—";
   }
-  if (ratio < 1) {
-    return Math.round(ratio * 100).toString();
+  if (received === 0) {
+    return donated === 0 ? "0.0" : "N/A";
   }
-  return ratio.toFixed(2);
+  const ratio = donated / received;
+  return ratio.toFixed(1);
 }
 
 function scoreColor(score: number): string | null {
@@ -80,7 +81,7 @@ export default function Ethics() {
 
   const gradientPosition = ethicsData ? calculateGradientPosition(ethicsData.ethicsScore) : 50;
   const donationRatioDisplay = ethicsData
-    ? formatDonationRatio(ethicsData.donationRatio)
+    ? formatDonationRatio(ethicsData.donations, ethicsData.donationsReceived)
     : "—";
   const deckScoreColor = ethicsData ? scoreColor(ethicsData.deckScore) : null;
   const donationScoreColor = ethicsData
@@ -138,10 +139,10 @@ export default function Ethics() {
                 </div>
                 <div className="ethics__donation-info">
                   <span>
-                    {ethicsData.donationsReceived} received / {ethicsData.donations} donated
-                    {ethicsData.donations > 0 && (
+                    {ethicsData.donations} donated / {ethicsData.donationsReceived} received
+                    {(ethicsData.donations > 0 || ethicsData.donationsReceived > 0) && (
                       <span className="ethics__donation-ratio">
-                        {' '}({donationRatioDisplay}:1 ratio)
+                        {' '}({donationRatioDisplay} ratio)
                       </span>
                     )}
                   </span>
