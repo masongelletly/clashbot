@@ -29,6 +29,29 @@ export type PlayerProfileResponse = {
       heroMedium?: string;
     };
   }>;
+  currentDeck?: Array<{
+    name: string;
+    id: number;
+    level: number;
+    maxLevel?: number;
+    elixirCost: number;
+    iconUrls?: {
+      medium?: string;
+      evolutionMedium?: string;
+      heroMedium?: string;
+    };
+  }>;
+  badges?: Array<{
+    name: string;
+    progress: number;
+    level: number;
+    maxLevel: number;
+    target: number; // Card ID
+    iconUrls?: {
+      medium?: string;
+      large?: string;
+    };
+  }>;
 };
 export type PlayerLeagueStatistics = {
   bestSeason?: LeagueSeasonResult;
@@ -75,4 +98,77 @@ export type scanClanForPlayerResponse = {
 export type ScanPlayersResponse = { // proxy api response
   matches: scanClanForPlayerResponse[];
   playerDetails: PlayerProfileResponse | null;
+};
+
+// cards.ts
+export type Card = {
+  id: number;
+  name: string;
+  maxLevel?: number;
+  iconUrls?: {
+    medium?: string;
+    evolutionMedium?: string;
+    heroMedium?: string;
+  };
+};
+
+export type CardsResponse = {
+  items: Card[];
+};
+
+// badges.ts
+export type Badge = {
+  id?: number;
+  name: string;
+  progress: number;
+  level: number;
+  maxLevel: number;
+  target: number; // Card ID
+  iconUrls?: {
+    medium?: string;
+    large?: string;
+  };
+};
+
+export type PlayerBadgesResponse = {
+  items: Badge[];
+};
+
+// Extended player profile with badges and current deck
+export type ExtendedPlayerProfileResponse = PlayerProfileResponse & {
+  currentDeck?: Array<{
+    id: number;
+    name: string;
+    level: number;
+    maxLevel?: number;
+    elixirCost: number;
+    iconUrls?: {
+      medium?: string;
+      evolutionMedium?: string;
+      heroMedium?: string;
+    };
+  }>;
+  badges?: Badge[];
+};
+
+// ethics.ts
+export type EthicsCalculationResult = {
+  ethicsScore: number;
+  deckScore: number;
+  donationScore: number;
+  donationRatio: number;
+  donations: number;
+  donationsReceived: number;
+  deckSlots: Array<{
+    id: number;
+    name: string;
+    level: number;
+    maxLevel?: number;
+    elixirCost: number;
+    iconUrl?: string;
+    weight: number;
+    isEvo: boolean;
+    isHero: boolean;
+    slotIndex: number;
+  } | null>;
 };
