@@ -100,6 +100,38 @@ const BIG_SPELLS = new Set(["freeze", "fireball", "poison", "rocket", "lightning
 // tanks
 const TANKS = new Set(["giant", "goblin giant", "electro giant", "golem", "elixer golem", "royal giant"])
 
+const WIN_CONDITION_PREFERENCE_GROUPS: Record<PreferredWinCondition, Set<string>[]> = {
+  defense: [
+    WIN_CON_DEFENSE,
+    STRUCTURES,
+    CYCLE,
+    MINI_TANK,
+    GROUND_DAMAGE,
+    AIR_DAMAGE,
+    MINI_SPELLS,
+    BIG_SPELLS,
+  ],
+  beatdown: [WIN_CON_BEATDOWN, TANKS, SUPPORT, AIR_DAMAGE, BIG_SPELLS],
+  offense: [
+    WIN_CON_OFFENSE,
+    MINI_TANK,
+    CYCLE,
+    STRUCTURES,
+    GROUND_DAMAGE,
+    AIR_DAMAGE,
+    MINI_SPELLS,
+    BIG_SPELLS,
+  ],
+  secondary: [
+    WIN_CON_SECONDARY,
+    CYCLE,
+    MINI_SPELLS,
+    GROUND_DAMAGE,
+    AIR_DAMAGE,
+    STRUCTURES,
+  ],
+};
+
 
 export function normalizeCardLevel(card: PlayerCard): number {
   const maxLevelOffset =
@@ -151,6 +183,27 @@ const sortByLevelAndWinRate = (a: NormalizedCard, b: NormalizedCard) => {
   return a.index - b.index;
 };
 
+const inferWinConditionType = (cards: PlayerCard[]): WinConditionType => {
+  const names = cards.map((card) => card.name.toLowerCase());
+  if (names.some((name) => WIN_CON_DEFENSE.has(name))) {
+    return "defense";
+  }
+  if (names.some((name) => WIN_CON_BEATDOWN.has(name))) {
+    return "beatdown";
+  }
+  if (names.some((name) => WIN_CON_OFFENSE.has(name))) {
+    return "offense";
+  }
+  if (names.some((name) => WIN_CON_SECONDARY.has(name))) {
+    return "secondary";
+  }
+  return "unknown";
+};
+
+const getWinConditionPreferenceGroups = (
+  winConditionType: WinConditionType
+) => (winConditionType === "unknown" ? [] : WIN_CONDITION_PREFERENCE_GROUPS[winConditionType]);
+
 
 export function buildOptimalDeck({
   cards,
@@ -198,8 +251,6 @@ export function buildOptimalDeck({
     selectedIds.add(card.id);
     return true;
   };
-  const pickBest = (entries: NormalizedCard[]) =>
-    [...entries].sort(sortByLevelAndWinRate)[0];
 
   if (preferredWinCondition) {
     const preferredGroup = WIN_CONDITION_GROUPS[preferredWinCondition];
@@ -253,35 +304,31 @@ export function buildOptimalDeck({
     }
   }
 
-  let hasHeroSlot = normalizedCards.some(
-    (entry) => selectedIds.has(entry.card.id) && entry.hasHero
-  );
-  let hasEvolutionSlot = normalizedCards.some(
-    (entry) => selectedIds.has(entry.card.id) && entry.hasEvolution
-  );
-
-  if (!hasHeroSlot) {
-    const heroCandidate = pickBest(
-      normalizedCards.filter(
-        (entry) => entry.hasHero && !selectedIds.has(entry.card.id)
-      )
-    );
-    if (heroCandidate) {
-      addSelectedCard(heroCandidate.card);
-      hasHeroSlot = true;
+  const winConditionFocus =
+    preferredWinCondition ?? inferWinConditionType(selectedWinCons);
+  const preferenceGroups = getWinConditionPreferenceGroups(winConditionFocus);
+  const preferenceRank = (entry: NormalizedCard) => {
+    if (preferenceGroups.length === 0) {
+      return 0;
     }
-  }
-
-  if (!hasEvolutionSlot) {
-    const evoCandidate = pickBest(
-      normalizedCards.filter(
-        (entry) => entry.hasEvolution && !selectedIds.has(entry.card.id)
-      )
+    const groupIndex = preferenceGroups.findIndex((group) =>
+      group.has(entry.name)
     );
-    if (evoCandidate && addSelectedCard(evoCandidate.card)) {
-      hasEvolutionSlot = true;
+    return groupIndex === -1 ? preferenceGroups.length : groupIndex;
+  };
+  const selectedRank = (entry: NormalizedCard) =>
+    selectedIds.has(entry.card.id) ? 0 : 1;
+  const sortBySpecialPriority = (a: NormalizedCard, b: NormalizedCard) => {
+    const selectedDiff = selectedRank(a) - selectedRank(b);
+    if (selectedDiff !== 0) {
+      return selectedDiff;
     }
-  }
+    const preferenceDiff = preferenceRank(a) - preferenceRank(b);
+    if (preferenceDiff !== 0) {
+      return preferenceDiff;
+    }
+    return sortByLevelAndWinRate(a, b);
+  };
 
   const championWinCons = selectedWinCons.filter(
     (card) => card.rarity?.toLowerCase() === "champion"
@@ -302,7 +349,7 @@ export function buildOptimalDeck({
 
   const heroCandidates = normalizedCards
     .filter((entry) => entry.hasHero)
-    .sort(sortByLevelAndWinRate);
+    .sort(sortBySpecialPriority);
 
   for (const slotIndex of [2, 3]) {
     if (slots[slotIndex]) {
@@ -323,7 +370,7 @@ export function buildOptimalDeck({
 
   const evoCandidates = normalizedCards
     .filter((entry) => entry.hasEvolution)
-    .sort(sortByLevelAndWinRate);
+    .sort(sortBySpecialPriority);
   console.log(
     "[DeckBuilder] evolution candidates",
     evoCandidates.map((entry) => ({
@@ -454,23 +501,7 @@ export function buildOptimalDeck({
   ensureGroup(GROUND_DAMAGE);
   ensureGroup(AIR_DAMAGE);
 
-  const inferredWinConType = (() => {
-    const names = selectedWinCons.map((card) => card.name.toLowerCase());
-    if (names.some((name) => WIN_CON_DEFENSE.has(name))) {
-      return "defense";
-    }
-    if (names.some((name) => WIN_CON_BEATDOWN.has(name))) {
-      return "beatdown";
-    }
-    if (names.some((name) => WIN_CON_OFFENSE.has(name))) {
-      return "offense";
-    }
-    if (names.some((name) => WIN_CON_SECONDARY.has(name))) {
-      return "secondary";
-    }
-    return "unknown";
-  })();
-  const winConType = preferredWinCondition ?? inferredWinConType;
+  const winConType = winConditionFocus;
 
   const ensureCount = (group: Set<string>, desired: number) => {
     let count = countInGroup(group);
