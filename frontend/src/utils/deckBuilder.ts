@@ -212,7 +212,6 @@ export function buildOptimalDeck({
   preferredWinCondition,
 }: BuildDeckInput): BuildDeckResult {
 
-  void trophies;
   const arenaStats = arenaAverageLevels[arenaId];
   const targetLevel = Math.round(arenaStats?.averageCardLevel ?? 16);
   const minLevel = targetLevel - 1; // one level under rounded average allowed
@@ -249,6 +248,10 @@ export function buildOptimalDeck({
   );
   const selectedWinCons: PlayerCard[] = [];
   const selectedIds = new Set<number>();
+  const evoSlotCount = trophies > 3000 ? 2 : 1;
+  const evoSlots = evoSlotCount === 2 ? [0, 1] : [0];
+  const heroSlotCount = trophies > 10000 ? 2 : trophies > 5000 ? 1 : 0;
+  const heroSlots = heroSlotCount === 2 ? [2, 3] : heroSlotCount === 1 ? [2] : [];
   const addSelectedCard = (card: PlayerCard | undefined) => {
     if (!card || selectedIds.has(card.id)) {
       return false;
@@ -373,7 +376,7 @@ export function buildOptimalDeck({
   const slots: Array<PlayerCard | null> = Array.from({ length: 8 }, () => null);
 
   let championIndex = 0;
-  for (const slotIndex of [2, 3]) {
+  for (const slotIndex of heroSlots) {
     if (championWinCons[championIndex]) {
       slots[slotIndex] = championWinCons[championIndex];
       championIndex += 1;
@@ -388,7 +391,7 @@ export function buildOptimalDeck({
     .filter((entry) => entry.hasHero)
     .sort(sortBySpecialPriority);
 
-  for (const slotIndex of [2, 3]) {
+  for (const slotIndex of heroSlots) {
     if (slots[slotIndex]) {
       continue;
     }
@@ -417,7 +420,7 @@ export function buildOptimalDeck({
     }))
   );
 
-  for (const slotIndex of [0, 1]) {
+  for (const slotIndex of evoSlots) {
     if (slots[slotIndex]) {
       continue;
     }
@@ -435,14 +438,16 @@ export function buildOptimalDeck({
   }
 
   console.log("[DeckBuilder] special slots filled", {
-    evoSlotsFilled: [0, 1].filter((slot) => Boolean(slots[slot])).length,
-    heroSlotsFilled: [2, 3].filter((slot) => Boolean(slots[slot])).length,
+    evoSlotsFilled: evoSlots.filter((slot) => Boolean(slots[slot])).length,
+    heroSlotsFilled: heroSlots.filter((slot) => Boolean(slots[slot])).length,
   });
 
-  const missingSpecialSlots = [0, 1, 2, 3].some((slot) => !slots[slot]);
+  const specialSlots = [...evoSlots, ...heroSlots];
+  const allSlots = Array.from({ length: 8 }, (_, index) => index);
+  const missingSpecialSlots = specialSlots.some((slot) => !slots[slot]);
   const baseSlots = missingSpecialSlots
-    ? Array.from({ length: 8 }, (_, index) => index)
-    : [4, 5, 6, 7];
+    ? allSlots
+    : allSlots.filter((slot) => !specialSlots.includes(slot));
   const nextBaseSlot = () => baseSlots.find((slot) => !slots[slot]) ?? null;
   const placeInBaseSlot = (card: PlayerCard, debugLabel?: string) => {
     const slotIndex = nextBaseSlot();

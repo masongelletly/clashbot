@@ -52,6 +52,7 @@ export async function calculateEthicsScore(
   // Fetch player data
   const playerProfile = await getPlayerDetails(playerTag);
   const trophies = playerProfile.trophies ?? 0;
+  const evoSlotCount = trophies > 3000 ? 2 : 1;
 
   // Get current deck directly from player profile
   const currentDeck = playerProfile.currentDeck ?? [];
@@ -78,7 +79,7 @@ export async function calculateEthicsScore(
       const hasEvolution = evolutionLevel === 1 || evolutionLevel === 3;
       const hasHero = evolutionLevel === 2 || evolutionLevel === 3;
       
-      const isEvolutionSlot = index < 2;
+      const isEvolutionSlot = index < evoSlotCount;
       const isHeroSlot = index >= 2 && index < 4;
       
       // Check if card actually has evo/hero variants (based on iconUrls from API)
@@ -179,4 +180,3 @@ export async function calculateEthicsScore(
     deckSlots: deckSlots,
   };
 }
-

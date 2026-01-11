@@ -55,6 +55,15 @@ export default function Builder() {
   const player = state?.player;
   const { player: activePlayer, playerProfile } = useActivePlayer();
   const displayPlayer = player ?? activePlayer;
+  const trophies = playerProfile?.trophies ?? 0;
+  const evoSlots =
+    trophies > 3000 ? new Set([0, 1]) : new Set([0]);
+  const heroSlots =
+    trophies > 10000
+      ? new Set([2, 3])
+      : trophies > 5000
+        ? new Set([2])
+        : new Set<number>();
 
   const deckData = useMemo(() => {
     if (!playerProfile) {
@@ -283,8 +292,8 @@ export default function Builder() {
                           aria-label={`${deckContent.title} deck slots`}
                         >
                           {deckSlots.map((card, slotIndex) => {
-                            const isEvolutionSlot = slotIndex < 2;
-                            const isHeroSlot = slotIndex >= 2 && slotIndex < 4;
+                            const isEvolutionSlot = evoSlots.has(slotIndex);
+                            const isHeroSlot = heroSlots.has(slotIndex);
                             const hasEvolution =
                               card?.evolutionLevel === 1 ||
                               card?.evolutionLevel === 3;
