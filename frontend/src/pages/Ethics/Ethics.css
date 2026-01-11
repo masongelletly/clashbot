@@ -1,11 +1,293 @@
 @import "../../styles/page.css";
 
 .ethics__card h2 {
-  margin: 0;
+  margin: 0 0 1rem 0;
   font-size: 1.6rem;
+}
+
+.ethics__card h3 {
+  margin: 1.25rem 0 0.75rem 0;
+  font-size: 1.2rem;
+  font-weight: 600;
 }
 
 .ethics__copy {
   margin: 0;
   color: var(--muted);
+}
+
+.ethics__loading,
+.ethics__error {
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+.ethics__error {
+  color: #dc3545;
+}
+
+/* Score Display */
+.ethics__score-display {
+  margin: 0.5rem 0;
+  text-align: center;
+}
+
+.ethics__score-value {
+  font-size: 3rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+}
+
+.ethics__score-breakdown {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.ethics__donation-info {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.ethics__donation-ratio {
+  opacity: 0.8;
+  font-style: italic;
+}
+
+/* Gradient Line */
+.ethics__gradient-container {
+  margin: 1.5rem 0 1rem;
+}
+
+.ethics__gradient-line {
+  position: relative;
+  width: 100%;
+  height: 20px;
+  border-radius: 10px;
+  background: linear-gradient(
+    to right,
+    #dc3545 0%,
+    #ffc107 25%,
+    #6c757d 50%,
+    #90ee90 75%,
+    #28a745 100%
+  );
+  margin-bottom: 0.5rem;
+}
+
+.ethics__gradient-dot {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  background: #fff;
+  border: 3px solid #000;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  z-index: 10;
+}
+
+.ethics__gradient-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--muted);
+  padding: 0 0.5rem;
+}
+
+/* Highest Used Card */
+.ethics__highest-card {
+  margin-top: 2rem;
+}
+
+.ethics__card-display {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--card-bg, #f8f9fa);
+  border-radius: 8px;
+}
+
+.ethics__card-icon {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+.ethics__card-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* Badges Grid */
+.ethics__badges {
+  margin-top: 2rem;
+}
+
+.ethics__badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.ethics__badge-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--card-bg, #f8f9fa);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.ethics__badge-icon {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+.ethics__badge-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ethics__badge-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.ethics__badge-badge-name {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
+.ethics__badge-progress {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+.ethics__no-badges {
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+.ethics__no-badges-hint {
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  opacity: 0.8;
+}
+
+.ethics__deck-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 16px;
+  width: min(100%, 720px);
+  margin-inline: 0;
+}
+
+.ethics__slot {
+  border-radius: 16px;
+  border: none;
+  background: transparent;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.ethics__slot--filled {
+  border: none;
+}
+
+.ethics__card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 0;
+}
+
+.ethics__card-figure {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.ethics__card-name {
+  padding: 8px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.ethics__card-level {
+  width: 100%;
+  align-self: stretch;
+  margin: 0 4px 2px;
+  padding: 4px 6px;
+  border-radius: 12px;
+  background: rgba(15, 14, 36, 0.9);
+  border: 1px solid rgba(143, 123, 255, 0.35);
+  color: var(--ink);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ethics__card-weight {
+  width: 100%;
+  margin: 2px 4px;
+  padding: 4px 6px;
+  border-radius: 12px;
+  background: rgba(15, 14, 36, 0.9);
+  border: 1px solid rgba(143, 123, 255, 0.35);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ethics__card-empty {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+}
+
+.ethics__no-deck {
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+.ethics__no-deck-hint {
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  opacity: 0.8;
+}
+
+@media (max-width: 700px) {
+  .ethics__deck-grid {
+    gap: 4px;
+  }
 }
