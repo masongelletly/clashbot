@@ -183,6 +183,14 @@ export default function Builder() {
       null
     );
   };
+  const heroIconUrl = (card: PlayerCard) => {
+    const cardName = cardNameFallback(card).toLowerCase();
+    if (cardName === "wizard") {
+      // TEMP: hero wizard is missing a hero iconUrl upstream, so fall back to base.
+      return cardIconUrl(card);
+    }
+    return card.iconUrls?.heroMedium ?? cardIconUrl(card);
+  };
   const emptyStateCopy = displayPlayer
     ? "We need your player profile to build decks. Try searching again."
     : "No player context was provided. Head back and run a search.";
@@ -290,9 +298,8 @@ export default function Builder() {
                                 ? card.iconUrls.evolutionMedium
                                 : card &&
                                     isHeroSlot &&
-                                    hasHero &&
-                                    card.iconUrls?.heroMedium
-                                  ? card.iconUrls.heroMedium
+                                    hasHero
+                                  ? heroIconUrl(card)
                                   : card
                                     ? cardIconUrl(card)
                                     : null;

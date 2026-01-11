@@ -59,7 +59,7 @@ const LEVEL_AGNOSTIC_CARDS = new Set(["freeze", "rage", "vines", "skeletons", "s
 const WIN_CON_OFFENSE = new Set(["boss bandit", "mega knight", "goblin giant", "balloon", "battering ram", "giant", "royal giant", "ram rider", "three musketeers"])
 const WIN_CON_DEFENSE = new Set(["mortar", "hogrider", "royal hogs", "goblin drill", "xbow", "rocket"])
 const WIN_CON_SECONDARY = new Set(["goblin barrel", "wall breakers", "skeleton barrel", "suspicious bush", "princess", "royal ghost", "bandit", "prince", "dark prince", "firecracker", "dart goblin", "goblin gang"])
-const WIN_CON_BEATDOWN = new Set(["elixir golem", "golem", "lava hound", "electro giant"])
+const WIN_CON_BEATDOWN = new Set(["giant", "elixir golem", "golem", "lava hound", "electro giant"])
 const WIN_CONDITION_GROUPS: Record<PreferredWinCondition, Set<string>> = {
   defense: WIN_CON_DEFENSE,
   beatdown: WIN_CON_BEATDOWN,
@@ -217,14 +217,7 @@ export function buildOptimalDeck({
   const targetLevel = Math.round(arenaStats?.averageCardLevel ?? 16);
   const minLevel = targetLevel - 1; // one level under rounded average allowed
   const agnosticMinLevel = targetLevel - 2;
-  const levelReadyCards = cards.filter((card) => {
-    const normalizedLevel = normalizeCardLevel(card);
-    if (LEVEL_AGNOSTIC_CARDS.has(card.name.toLowerCase())) {
-      return normalizedLevel >= agnosticMinLevel;
-    }
-    return normalizedLevel >= minLevel;
-  });
-  const normalizedCards: NormalizedCard[] = levelReadyCards.map((card, index) => {
+  const normalizedAllCards: NormalizedCard[] = cards.map((card, index) => {
     const typedCard = card as PlayerCard & {
       evolutionLevel?: number;
     };
@@ -241,6 +234,19 @@ export function buildOptimalDeck({
       hasHero,
     };
   });
+  const normalizedCards = normalizedAllCards.filter((entry) => {
+    if (LEVEL_AGNOSTIC_CARDS.has(entry.name)) {
+      return entry.level >= agnosticMinLevel;
+    }
+    return entry.level >= minLevel;
+  });
+  const hasLevelReadyWinCondition = normalizedCards.some(
+    (entry) =>
+      WIN_CON_DEFENSE.has(entry.name) ||
+      WIN_CON_BEATDOWN.has(entry.name) ||
+      WIN_CON_OFFENSE.has(entry.name) ||
+      WIN_CON_SECONDARY.has(entry.name)
+  );
   const selectedWinCons: PlayerCard[] = [];
   const selectedIds = new Set<number>();
   const addSelectedCard = (card: PlayerCard | undefined) => {
@@ -252,15 +258,34 @@ export function buildOptimalDeck({
     return true;
   };
 
+  const addTopCandidates = (
+    candidates: NormalizedCard[],
+    desiredCount: number
+  ) => {
+    let added = 0;
+    for (const entry of candidates) {
+      if (addSelectedCard(entry.card)) {
+        added += 1;
+      }
+      if (added >= desiredCount) {
+        break;
+      }
+    }
+    return added;
+  };
+
   if (preferredWinCondition) {
     const preferredGroup = WIN_CONDITION_GROUPS[preferredWinCondition];
     const desiredCount = preferredWinCondition === "secondary" ? 2 : 1;
     const preferredCandidates = normalizedCards
       .filter((entry) => preferredGroup.has(entry.name))
-      .sort(sortByLevelAndWinRate)
-      .slice(0, desiredCount);
-    for (const entry of preferredCandidates) {
-      addSelectedCard(entry.card);
+      .sort(sortByLevelAndWinRate);
+    const preferredAdded = addTopCandidates(preferredCandidates, desiredCount);
+    if (preferredAdded < desiredCount) {
+      const fallbackCandidates = normalizedAllCards
+        .filter((entry) => preferredGroup.has(entry.name))
+        .sort(sortByLevelAndWinRate);
+      addTopCandidates(fallbackCandidates, desiredCount - preferredAdded);
     }
   }
 
@@ -270,16 +295,23 @@ export function buildOptimalDeck({
       WIN_CON_BEATDOWN,
       WIN_CON_OFFENSE,
     ];
-    const primaryCandidates = normalizedCards.filter((entry) =>
+    let primarySource = normalizedCards;
+    let primaryCandidates = primarySource.filter((entry) =>
       primaryPriority.some((set) => set.has(entry.name))
     );
+    if (!hasLevelReadyWinCondition) {
+      primarySource = normalizedAllCards;
+      primaryCandidates = primarySource.filter((entry) =>
+        primaryPriority.some((set) => set.has(entry.name))
+      );
+    }
     const maxPrimaryLevel = primaryCandidates.reduce(
       (max, entry) => Math.max(max, entry.level),
       -Infinity
     );
     if (Number.isFinite(maxPrimaryLevel)) {
       for (const winConSet of primaryPriority) {
-        const match = normalizedCards.find(
+        const match = primarySource.find(
           (entry) => winConSet.has(entry.name) && entry.level === maxPrimaryLevel
         );
         if (match) {
@@ -290,9 +322,14 @@ export function buildOptimalDeck({
     }
   }
   if (selectedWinCons.length === 0) {
-    const secondaryCandidates = normalizedCards
+    let secondaryCandidates = normalizedCards
       .filter((entry) => WIN_CON_SECONDARY.has(entry.name))
       .sort(sortByLevelAndWinRate);
+    if (!hasLevelReadyWinCondition) {
+      secondaryCandidates = normalizedAllCards
+        .filter((entry) => WIN_CON_SECONDARY.has(entry.name))
+        .sort(sortByLevelAndWinRate);
+    }
     let secondaryCount = 0;
     for (const entry of secondaryCandidates) {
       if (addSelectedCard(entry.card)) {

@@ -1,259 +1,234 @@
-/**
- * CARD ETHICS WEIGHTS CONFIGURATION
- * 
- * ⚠️EDIT CARD WEIGHTS ⚠️
- * 
- * HOW TO EDIT:
- * - Each card name maps to a number representing its ethical value
- * - Positive values = more ethical/good cards (e.g., +1.0)
- * - Negative values = less ethical/bad cards (e.g., -1.0)
- * - Zero = neutral (0.0)
- * - Values typically range from -2.0 to +2.0
- * 
- * TO UPDATE WEIGHTS:
- * 1. Find the card name in the CARD_WEIGHTS object below (starts around line 30)
- * 2. Change its numeric value to your desired weight
- * 
- * EXAMPLE:
- *   "Knight": 0.5,              // Base card weight
- *   "Knight (Evo)": 0.7,        // Evolution version (Knight has evo)
- *   "Knight (Hero)": 0.6,       // Hero version (Knight has hero)
- *   "Elite Barbarians": -1.0,   // No evo/hero weights (Elite Barbarians doesn't have variants)
- * 
- */
-
 export const CARD_WEIGHTS: Record<string, number> = {
   
   // Base card weights with evo/hero variants
-  "Knight": 0.5,
-  "Knight (Evo)": -0.1,        // Knight has evo
-  "Knight (Hero)": -0.6,       // Knight has hero
+  "Knight": 1.0,
+  "Knight (Evo)": -0.2,
+  "Knight (Hero)": -1.2,
   
-  "Archers": 0.3,
-  "Archers (Evo)": 0.1,       // Archers has evo
+  "Archers": 0.6,
+  "Archers (Evo)": 0.2,
   
-  "Goblins": 0.1,
+  "Goblins": 0.2,
   
-  "Giant": 0.1,
-  "Giant (Hero)": -0.1,       // Giant has hero
+  "Giant": 0.2,
+  "Giant (Hero)": -0.2,
   
-  "P.E.K.K.A": -0.5,
-  "P.E.K.K.A (Evo)": -1.0,    // P.E.K.K.A has evo 
+  "P.E.K.K.A": -1.0,
+  "P.E.K.K.A (Evo)": -2.0,
   
-  "Minions": 0.2,
-  "Balloon": -1.0,
+  "Minions": 0.4,
+  "Balloon": -2.0,
   
-  "Witch": -0.3,
-  "Witch (Evo)": -1.0,        // Witch has evo
+  "Witch": -0.6,
+  "Witch (Evo)": -2.0,
   
-  "Barbarians": 0.5,
-  "Barbarians (Evo)": 1.0,   // Barbarians has evo
+  "Barbarians": 1.0,
+  "Barbarians (Evo)": 2.0,
   
-  "Golem": -1.5,
+  "Golem": -3.0,
   
   "Skeletons": 0.0,
-  "Skeletons (Evo)": 0.0,    // Skeletons has evo
+  "Skeletons (Evo)": 0.0,
   
-  "Valkyrie": 0.5,
-  "Valkyrie (Evo)": -0.5,      // Valkyrie has evo
+  "Valkyrie": 1.0,
+  "Valkyrie (Evo)": -1.0,
   
-  "Skeleton Army": -0.2,
-  "Skeleton Army (Evo)": -0.5, // Skeleton Army has evo
+  "Skeleton Army": -0.4,
+  "Skeleton Army (Evo)": -1.0,
   
-  "Bomber": 0.5,
-  "Bomber (Evo)": 0.5,       // Bomber has evo
+  "Bomber": 1.0,
+  "Bomber (Evo)": 1.0,
   
-  "Musketeer": 0,
-  "Musketeer (Evo)": -0.2,     // Musketeer has evo
-  "Musketeer (Hero)": -0.8,   // Musketeer has hero
+  "Musketeer": 0.0,
+  "Musketeer (Evo)": -0.4,
+  "Musketeer (Hero)": -1.6,
   
-  "Baby Dragon": -0.3,
-  "Baby Dragon (Evo)": -0.8,  // Baby Dragon has evo
+  "Baby Dragon": -0.6,
+  "Baby Dragon (Evo)": -1.6,
   
-  "Prince": -0.7,
+  "Prince": -1.4,
   
-  "Wizard": 1.0,
-  "Wizard (Evo)": 0.5,       // Wizard has evo
-  "Wizard (Hero)": -0.5,     // Wizard has hero
+  "Wizard": 2.0,
+  "Wizard (Evo)": 1.0,
+  "Wizard (Hero)": -1.0,
   
-  "Mini P.E.K.K.A": -0.2,
-  "Mini P.E.K.K.A (Hero)": -0.5, // Mini P.E.K.K.A has hero
+  "Mini P.E.K.K.A": -0.4,
+  "Mini P.E.K.K.A (Hero)": -1.0,
   
-  "Giant Skeleton": 1.0,
+  "Giant Skeleton": 2.0,
   
   "Hog Rider": 0.0,
   
-  "Minion Horde": -0.5,
+  "Minion Horde": -1.0,
   
-  "Ice Wizard": 0.5,
+  "Ice Wizard": 1.0,
   
-  "Royal Giant": -0.6,
-  "Royal Giant (Evo)": -1.0,  // Royal Giant has evo
+  "Royal Giant": -1.2,
+  "Royal Giant (Evo)": -2.0,
   
-  "Guards": 0.7,
+  "Guards": 1.4,
   
-  "Princess": 0.5,
-  "Dark Prince": -0.5,
-  "Three Musketeers": -0.5,
-  "Lava Hound": 0.5,
+  "Princess": 1.0,
+  "Dark Prince": -1.0,
+  "Three Musketeers": -1.0,
+  "Lava Hound": 1.0,
   
-  "Ice Spirit": 0.1,
-  "Ice Spirit (Evo)": 0.5,   // Ice Spirit has evo
+  "Ice Spirit": 0.2,
+  "Ice Spirit (Evo)": 1.0,
   
   "Fire Spirit": 0.0,
-  "Mega Minion": 1.0,
+  "Mega Minion": 2.0,
   
-  "Dart Goblin": -0.8,
-  "Dart Goblin (Evo)": -1.0, // Dart Goblin has evo
+  "Dart Goblin": -1.6,
+  "Dart Goblin (Evo)": -2.0,
   
-  "Goblin Gang": 0.5,
-  "Electro Wizard": -0.5,
+  "Goblin Gang": 1.0,
+  "Electro Wizard": -1.0,
   
-  "Elite Barbarians": -0.5,
+  "Elite Barbarians": -1.0,
   
-  "Hunter": -0.5,
-  "Hunter (Evo)": -0.5,       // Hunter has evo
+  "Hunter": -1.0,
+  "Hunter (Evo)": -1.0,
   
-  "Executioner": -0.5,
-  "Executioner (Evo)": -1.0,  // Executioner has evo
+  "Executioner": -1.0,
+  "Executioner (Evo)": -2.0,
   
-  "Bandit": 0.5,
+  "Bandit": 1.0,
   
-  "Royal Recruits": -1.0,
-  "Royal Recruits (Evo)": -1.5, // Royal Recruits has evo
+  "Royal Recruits": -2.0,
+  "Royal Recruits (Evo)": -3.0,
   
-  "Night Witch": -0.5,
+  "Night Witch": -1.0,
   
   "Bats": 0.0,
-  "Bats (Evo)": -0.5,        // Bats has evo
+  "Bats (Evo)": -1.0,
   
-  "Royal Ghost": -0.5,
-  "Royal Ghost (Evo)": -1.0,  // Royal Ghost has evo
+  "Royal Ghost": -1.0,
+  "Royal Ghost (Evo)": -2.0,
   
-  "Ram Rider": 0.5,
+  "Ram Rider": 1.0,
   
-  "Battle Ram": -0.5,
-  "Battle Ram (Evo)": -0.8,   // Battle Ram has evo
+  "Battle Ram": -1.0,
+  "Battle Ram (Evo)": -1.6,
   
-  "Zappies": 0.3,
-  "Rascals": -0.3,
-  "Cannon Cart": -0.3,
+  "Zappies": 0.6,
+  "Rascals": -0.6,
+  "Cannon Cart": -0.6,
   
-  "Mega Knight": -1.5,
-  "Mega Knight (Evo)": -1.5,  // Mega Knight has evo
+  "Mega Knight": -3.0,
+  "Mega Knight (Evo)": -3.0,
   
-  "Skeleton Barrel": -0.5,
-  "Skeleton Barrel (Evo)": -1.0, // Skeleton Barrel has evo
+  "Skeleton Barrel": -1.0,
+  "Skeleton Barrel (Evo)": -2.0,
   
   "Flying Machine": 0.0,
   
-  "Wall Breakers": -0.8,
-  "Wall Breakers (Evo)": -1.0, // Wall Breakers has evo
+  "Wall Breakers": -1.6,
+  "Wall Breakers (Evo)": -2.0,
   
-  "Royal Hogs": -0.5,
-  "Royal Hogs (Evo)": -0.5,   // Royal Hogs has evo
+  "Royal Hogs": -1.0,
+  "Royal Hogs (Evo)": -1.0,
   
-  "Goblin Giant": -0.5,
-  "Goblin Giant (Evo)": -0.5, // Goblin Giant has evo
+  "Goblin Giant": -1.0,
+  "Goblin Giant (Evo)": -1.0,
   
-  "Fisherman": 0.5,
-  "Magic Archer": 0.5,
+  "Fisherman": 1.0,
+  "Magic Archer": 1.0,
   
-  "Electro Dragon": -0.5,
-  "Electro Dragon (Evo)": -1.0, // Electro Dragon has evo
+  "Electro Dragon": -1.0,
+  "Electro Dragon (Evo)": -2.0,
   
-  "Firecracker": -0.5,
-  "Firecracker (Evo)": -0.8, // Firecracker has evo
+  "Firecracker": -1.0,
+  "Firecracker (Evo)": -1.6,
   
-  "Mighty Miner": 0.5,
-  "Elixir Golem": -1.5,
-  "Battle Healer": 0.5,
+  "Mighty Miner": 1.0,
+  "Elixir Golem": -3.0,
+  "Battle Healer": 1.0,
   
-  "Skeleton King": -0.5,
+  "Skeleton King": -1.0,
   
-  "Archer Queen": -0.5,
+  "Archer Queen": -1.0,
   
-  "Golden Knight": -0.5,
+  "Golden Knight": -1.0,
   
-  "Skeleton Dragons": 0.5,
-  "Mother Witch": -0.3,
-  "Electro Giant": -1.0,
-  "Electro Spirit": 0.3,
+  "Skeleton Dragons": 1.0,
+  "Mother Witch": -0.6,
+  "Electro Giant": -2.0,
+  "Electro Spirit": 0.6,
   
-  "Goblin Drill": -0.8,
-  "Goblin Drill (Evo)": 1.0, // Goblin Drill has evo
+  "Goblin Drill": -1.6,
+  "Goblin Drill (Evo)": 2.0,
   
-  "Goblin Cage": 0.3,
-  "Goblin Cage (Evo)": -0.3,  // Goblin Cage has evo
+  "Goblin Cage": 0.6,
+  "Goblin Cage (Evo)": -0.6,
   
-  "Fireball": -0.3,
+  "Fireball": -0.6,
   "Arrows": 0.0,
-  "Rage": -0.3,
-  "Rocket": -1.0,
+  "Rage": -0.6,
+  "Rocket": -2.0,
   
-  "Goblin Barrel": -0.5,
-  "Goblin Barrel (Evo)": -0.8, // Goblin Barrel has evo
+  "Goblin Barrel": -1.0,
+  "Goblin Barrel (Evo)": -1.6,
   
-  "Freeze": -0.8,
-  "Mirror": 2.0,
-  "Lightning": -1.0,
+  "Freeze": -1.6,
+  "Mirror": 4.0,
+  "Lightning": -2.0,
   
   "Zap": 0.0,
-  "Zap (Evo)": 0.3,           // Zap has evo
+  "Zap (Evo)": 0.6,
   
-  "Poison": -0.5,
-  "Graveyard": -0.5,
-  "The Log": 0.5,
-  "Tornado": 0.5,
-  "Clone": 0.5,
-  "Earthquake": -0.5,
+  "Poison": -1.0,
+  "Graveyard": -1.0,
+  "The Log": 1.0,
+  "Tornado": 1.0,
+  "Clone": 1.0,
+  "Earthquake": -1.0,
   
   "Giant Snowball": 0.0,
-  "Giant Snowball (Evo)": 0.5, // Giant Snowball has evo
+  "Giant Snowball (Evo)": 1.0,
   
-  "Royal Delivery": 0.5,
-  "Heal Spirit": 0.5,
-  "Goblin Hut": -0.5,
+  "Royal Delivery": 1.0,
+  "Heal Spirit": 1.0,
+  "Goblin Hut": -1.0,
   
-  "Mortar": -0.5,
-  "Mortar (Evo)": -0.8,       // Mortar has evo
+  "Mortar": -1.0,
+  "Mortar (Evo)": -1.6,
   
-  "Inferno Tower": -0.3,
-  "Bomb Tower": 0.3,
-  "Barbarian Hut": 2.0,
+  "Inferno Tower": -0.6,
+  "Bomb Tower": 0.6,
+  "Barbarian Hut": 4.0,
   
-  "Tesla": 0.5,
-  "Tesla (Evo)": 0.5,        // Tesla has evo
+  "Tesla": 1.0,
+  "Tesla (Evo)": 1.0,
   
   "Elixir Collector": 0.0,
-  "X-Bow": -0.7,
-  "Tombstone": 0.5,
+  "X-Bow": -1.4,
+  "Tombstone": 1.0,
   
-  "Furnace": -0.5,
-  "Furnace (Evo)": -0.8,      // Furnace has evo
+  "Furnace": -1.0,
+  "Furnace (Evo)": -1.6,
   
-  "Cannon": 0.5,
-  "Cannon (Evo)": 0.8,       // Cannon has evo
+  "Cannon": 1.0,
+  "Cannon (Evo)": 1.6,
   
-  "Inferno Dragon": -0.3,
-  "Inferno Dragon (Evo)": -0.3, // Inferno Dragon has evo
+  "Inferno Dragon": -0.6,
+  "Inferno Dragon (Evo)": -0.6,
   
-  "Ice Golem": 0.5,
-  "Ice Golem (Hero)": 0.0,    // Ice Golem has hero
+  "Ice Golem": 1.0,
+  "Ice Golem (Hero)": 0.0,
   
   "Miner": 0.0,
-  "Sparky": 0.5,
+  "Sparky": 1.0,
   
-  "Lumberjack": -0.5,
-  "Lumberjack (Evo)": -0.8,   // Lumberjack has evo
+  "Lumberjack": -1.0,
+  "Lumberjack (Evo)": -1.6,
   
+  "Boss Bandit": -3.0,
+  "Suspicious Bush": -1.0,
 
+  "Berserker": 1.0
 };
 
-/**
- * Get the weight for a card by name
- * Returns 0 if card not found (neutral)
- */
 export function getCardWeight(cardName: string): number {
   return CARD_WEIGHTS[cardName] ?? 0;
 }
