@@ -4,6 +4,24 @@ import { cardWinRates } from "../config/cardWinRates";
 
 export type PlayerCard = CRTypes.PlayerProfileResponse["cards"][number];
 
+export const WIN_CONDITION_TYPES = [
+  "defense",
+  "beatdown",
+  "offense",
+  "secondary",
+] as const;
+export type PreferredWinCondition = (typeof WIN_CONDITION_TYPES)[number];
+export type WinConditionType = PreferredWinCondition | "unknown";
+
+type NormalizedCard = {
+  card: PlayerCard;
+  name: string;
+  level: number;
+  index: number;
+  hasEvolution: boolean;
+  hasHero: boolean;
+};
+
 const COMMON_MAX_LEVEL = 16;
 const RARITY_OFFSETS: Record<string, number> = {
   common: 0,
@@ -17,9 +35,17 @@ export type BuildDeckInput = {
   cards: PlayerCard[];
   trophies: number;
   arenaId: number;
+  preferredWinCondition?: PreferredWinCondition;
 };
 
 export type BuildDeckResult = {
+  deck: Array<PlayerCard | null>;
+  averageElixir: number;
+  winConditionType: WinConditionType;
+};
+
+export type DeckOption = {
+  winConditionType: PreferredWinCondition;
   deck: Array<PlayerCard | null>;
   averageElixir: number;
 };
@@ -34,6 +60,12 @@ const WIN_CON_OFFENSE = new Set(["boss bandit", "mega knight", "goblin giant", "
 const WIN_CON_DEFENSE = new Set(["mortar", "hogrider", "royal hogs", "goblin drill", "xbow", "rocket"])
 const WIN_CON_SECONDARY = new Set(["goblin barrel", "wall breakers", "skeleton barrel", "suspicious bush", "princess", "royal ghost", "bandit", "prince", "dark prince", "firecracker", "dart goblin", "goblin gang"])
 const WIN_CON_BEATDOWN = new Set(["elixir golem", "golem", "lava hound", "electro giant"])
+const WIN_CONDITION_GROUPS: Record<PreferredWinCondition, Set<string>> = {
+  defense: WIN_CON_DEFENSE,
+  beatdown: WIN_CON_BEATDOWN,
+  offense: WIN_CON_OFFENSE,
+  secondary: WIN_CON_SECONDARY,
+};
 
 // support cards 
 // - cards that primarily support pushes 
@@ -108,11 +140,23 @@ const getCardWinRate = (card: PlayerCard): number => {
   return 0;
 };
 
+const sortByLevelAndWinRate = (a: NormalizedCard, b: NormalizedCard) => {
+  if (b.level !== a.level) {
+    return b.level - a.level;
+  }
+  const winRateDiff = getCardWinRate(b.card) - getCardWinRate(a.card);
+  if (winRateDiff !== 0) {
+    return winRateDiff;
+  }
+  return a.index - b.index;
+};
+
 
 export function buildOptimalDeck({
   cards,
   trophies,
   arenaId,
+  preferredWinCondition,
 }: BuildDeckInput): BuildDeckResult {
 
   void trophies;
@@ -127,7 +171,7 @@ export function buildOptimalDeck({
     }
     return normalizedLevel >= minLevel;
   });
-  const normalizedCards = levelReadyCards.map((card, index) => {
+  const normalizedCards: NormalizedCard[] = levelReadyCards.map((card, index) => {
     const typedCard = card as PlayerCard & {
       evolutionLevel?: number;
     };
@@ -154,43 +198,50 @@ export function buildOptimalDeck({
     selectedIds.add(card.id);
     return true;
   };
+  const pickBest = (entries: NormalizedCard[]) =>
+    [...entries].sort(sortByLevelAndWinRate)[0];
 
-  const primaryPriority = [
-    WIN_CON_DEFENSE,
-    WIN_CON_BEATDOWN,
-    WIN_CON_OFFENSE,
-  ];
-  const primaryCandidates = normalizedCards.filter((entry) =>
-    primaryPriority.some((set) => set.has(entry.name))
-  );
-  const maxPrimaryLevel = primaryCandidates.reduce(
-    (max, entry) => Math.max(max, entry.level),
-    -Infinity
-  );
-  if (Number.isFinite(maxPrimaryLevel)) {
-    for (const winConSet of primaryPriority) {
-      const match = normalizedCards.find(
-        (entry) => winConSet.has(entry.name) && entry.level === maxPrimaryLevel
-      );
-      if (match) {
-        addSelectedCard(match.card);
-        break;
+  if (preferredWinCondition) {
+    const preferredGroup = WIN_CONDITION_GROUPS[preferredWinCondition];
+    const desiredCount = preferredWinCondition === "secondary" ? 2 : 1;
+    const preferredCandidates = normalizedCards
+      .filter((entry) => preferredGroup.has(entry.name))
+      .sort(sortByLevelAndWinRate)
+      .slice(0, desiredCount);
+    for (const entry of preferredCandidates) {
+      addSelectedCard(entry.card);
+    }
+  }
+
+  if (selectedWinCons.length === 0) {
+    const primaryPriority = [
+      WIN_CON_DEFENSE,
+      WIN_CON_BEATDOWN,
+      WIN_CON_OFFENSE,
+    ];
+    const primaryCandidates = normalizedCards.filter((entry) =>
+      primaryPriority.some((set) => set.has(entry.name))
+    );
+    const maxPrimaryLevel = primaryCandidates.reduce(
+      (max, entry) => Math.max(max, entry.level),
+      -Infinity
+    );
+    if (Number.isFinite(maxPrimaryLevel)) {
+      for (const winConSet of primaryPriority) {
+        const match = normalizedCards.find(
+          (entry) => winConSet.has(entry.name) && entry.level === maxPrimaryLevel
+        );
+        if (match) {
+          addSelectedCard(match.card);
+          break;
+        }
       }
     }
   }
   if (selectedWinCons.length === 0) {
     const secondaryCandidates = normalizedCards
       .filter((entry) => WIN_CON_SECONDARY.has(entry.name))
-      .sort((a, b) => {
-        if (b.level !== a.level) {
-          return b.level - a.level;
-        }
-        const winRateDiff = getCardWinRate(b.card) - getCardWinRate(a.card);
-        if (winRateDiff !== 0) {
-          return winRateDiff;
-        }
-        return a.index - b.index;
-      });
+      .sort(sortByLevelAndWinRate);
     let secondaryCount = 0;
     for (const entry of secondaryCandidates) {
       if (addSelectedCard(entry.card)) {
@@ -201,17 +252,6 @@ export function buildOptimalDeck({
       }
     }
   }
-  const pickBest = (entries: typeof normalizedCards) =>
-    [...entries].sort((a, b) => {
-      if (b.level !== a.level) {
-        return b.level - a.level;
-      }
-      const winRateDiff = getCardWinRate(b.card) - getCardWinRate(a.card);
-      if (winRateDiff !== 0) {
-        return winRateDiff;
-      }
-      return a.index - b.index;
-    })[0];
 
   let hasHeroSlot = normalizedCards.some(
     (entry) => selectedIds.has(entry.card.id) && entry.hasHero
@@ -248,20 +288,6 @@ export function buildOptimalDeck({
   );
   const slots: Array<PlayerCard | null> = Array.from({ length: 8 }, () => null);
 
-  const sortByLevel = (
-    a: (typeof normalizedCards)[number],
-    b: (typeof normalizedCards)[number]
-  ) => {
-    if (b.level !== a.level) {
-      return b.level - a.level;
-    }
-    const winRateDiff = getCardWinRate(b.card) - getCardWinRate(a.card);
-    if (winRateDiff !== 0) {
-      return winRateDiff;
-    }
-    return a.index - b.index;
-  };
-
   let championIndex = 0;
   for (const slotIndex of [2, 3]) {
     if (championWinCons[championIndex]) {
@@ -276,7 +302,7 @@ export function buildOptimalDeck({
 
   const heroCandidates = normalizedCards
     .filter((entry) => entry.hasHero)
-    .sort(sortByLevel);
+    .sort(sortByLevelAndWinRate);
 
   for (const slotIndex of [2, 3]) {
     if (slots[slotIndex]) {
@@ -297,7 +323,7 @@ export function buildOptimalDeck({
 
   const evoCandidates = normalizedCards
     .filter((entry) => entry.hasEvolution)
-    .sort(sortByLevel);
+    .sort(sortByLevelAndWinRate);
   console.log(
     "[DeckBuilder] evolution candidates",
     evoCandidates.map((entry) => ({
@@ -428,7 +454,7 @@ export function buildOptimalDeck({
   ensureGroup(GROUND_DAMAGE);
   ensureGroup(AIR_DAMAGE);
 
-  const winConType = (() => {
+  const inferredWinConType = (() => {
     const names = selectedWinCons.map((card) => card.name.toLowerCase());
     if (names.some((name) => WIN_CON_DEFENSE.has(name))) {
       return "defense";
@@ -444,6 +470,7 @@ export function buildOptimalDeck({
     }
     return "unknown";
   })();
+  const winConType = preferredWinCondition ?? inferredWinConType;
 
   const ensureCount = (group: Set<string>, desired: number) => {
     let count = countInGroup(group);
@@ -658,5 +685,47 @@ export function buildOptimalDeck({
     }
   }
 
-  return { deck: slots, averageElixir: calculateAverageElixir(slots) };
+  return {
+    deck: slots,
+    averageElixir: calculateAverageElixir(slots),
+    winConditionType: winConType,
+  };
+}
+
+export function buildWinConditionDecks(
+  input: BuildDeckInput
+): {
+  decks: DeckOption[];
+  optimalIndex: number;
+} {
+  const { preferredWinCondition, ...baseInput } = input;
+  void preferredWinCondition;
+
+  const optimalDeck = buildOptimalDeck(baseInput);
+  const decks = WIN_CONDITION_TYPES.map((winConditionType) => {
+    const result = buildOptimalDeck({
+      ...baseInput,
+      preferredWinCondition: winConditionType,
+    });
+    return {
+      winConditionType,
+      deck: result.deck,
+      averageElixir: result.averageElixir,
+    };
+  });
+
+  const inferredIndex = WIN_CONDITION_TYPES.findIndex(
+    (type) => type === optimalDeck.winConditionType
+  );
+  const optimalIndex = inferredIndex >= 0 ? inferredIndex : 0;
+
+  if (decks[optimalIndex]) {
+    decks[optimalIndex] = {
+      ...decks[optimalIndex],
+      deck: optimalDeck.deck,
+      averageElixir: optimalDeck.averageElixir,
+    };
+  }
+
+  return { decks, optimalIndex };
 }
