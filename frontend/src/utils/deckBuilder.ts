@@ -57,7 +57,7 @@ const LEVEL_AGNOSTIC_CARDS = new Set(["freeze", "rage", "vines", "skeletons", "s
 
 // win conditions
 const WIN_CON_OFFENSE = new Set(["boss bandit", "mega knight", "goblin giant", "balloon", "battering ram", "giant", "royal giant", "ram rider", "three musketeers"])
-const WIN_CON_DEFENSE = new Set(["mortar", "hogrider", "royal hogs", "goblin drill", "xbow", "rocket"])
+const WIN_CON_DEFENSE = new Set(["mortar", "hog rider", "royal hogs", "goblin drill", "xbow", "rocket"])
 const WIN_CON_SECONDARY = new Set(["goblin barrel", "wall breakers", "skeleton barrel", "suspicious bush", "princess", "royal ghost", "bandit", "prince", "dark prince", "firecracker", "dart goblin", "goblin gang"])
 const WIN_CON_BEATDOWN = new Set(["giant", "elixir golem", "golem", "lava hound", "electro giant"])
 const WIN_CONDITION_GROUPS: Record<PreferredWinCondition, Set<string>> = {
