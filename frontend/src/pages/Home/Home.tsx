@@ -207,7 +207,7 @@ export default function Home() {
                 </div>
                 <div className="home__action-row">
                   <Link
-                    className="home__secondary-btn"
+                    className="home__primary-btn"
                     to="/ethics"
                     state={{ player: primaryMatch }}
                     onClick={() => setPlayer(primaryMatch)}

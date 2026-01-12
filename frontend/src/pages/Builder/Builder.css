@@ -1,6 +1,6 @@
 @import "../../styles/page.css";
 
-.builder__card h2 {
+.builder__swipe-shell h2 {
   margin: 0;
   font-size: 1.6rem;
 }
@@ -10,35 +10,156 @@
   color: var(--muted);
 }
 
-.builder__meta {
+.builder__swipe-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.builder__swipe-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.builder__swipe-meta {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(143, 123, 255, 0.35);
+  background: rgba(244, 241, 255, 0.08);
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.builder__swipe {
+  --swipe-gutter: clamp(12px, 4vw, 28px);
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+  border: none;
+  background: transparent;
+  touch-action: pan-y;
+  cursor: grab;
+}
+
+.builder__swipe--dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.builder__swipe-track {
+  display: flex;
+  box-sizing: border-box;
+  padding: 0 var(--swipe-gutter);
+  gap: calc(var(--swipe-gutter) * 2);
+  transition: transform 0.35s ease;
+  will-change: transform;
+}
+
+.builder__swipe-track.is-dragging {
+  transition: none;
+}
+
+.builder__deck {
+  flex: 0 0 100%;
+  padding: 20px 18px 18px;
+  display: grid;
+  gap: 14px;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(77, 155, 255, 0.25), transparent 55%),
+    linear-gradient(160deg, rgba(19, 16, 38, 0.96), rgba(12, 10, 26, 0.96));
+  border-radius: 22px;
+  border: 1px solid rgba(122, 104, 255, 0.5);
+}
+
+.builder__deck-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.builder__deck-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.builder__deck-label {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.builder__deck-chip {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: rgba(77, 155, 255, 0.22);
+  border: 1px solid rgba(77, 155, 255, 0.45);
+  color: var(--ink);
+}
+
+.builder__deck-description {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  max-width: 320px;
+}
+
+.builder__deck-stat {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+  color: var(--muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.builder__deck-stat-label {
+  opacity: 0.8;
+}
+
+.builder__deck-stat-value {
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .builder__deck-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 16px;
-  width: min(100%, 720px);
-  margin-inline: 0;
+  gap: 8px;
+  margin-top: 4px;
+  width: 100%;
 }
 
 .builder__slot {
-  border-radius: 16px;
-  border: none;
-  background: transparent;
+  border-radius: 14px;
+  border: 1px solid rgba(125, 114, 255, 0.25);
+  background: rgba(17, 16, 40, 0.75);
   display: grid;
   gap: 6px;
   justify-items: center;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   text-align: center;
   overflow: hidden;
+  padding: 6px;
+  min-height: 0;
 }
 
 .builder__slot--filled {
-  border: none;
+  border-color: rgba(143, 123, 255, 0.45);
 }
 
 .builder__card-img {
@@ -54,10 +175,12 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .builder__card-name {
-  padding: 8px;
+  padding: 6px;
   color: var(--ink);
   font-weight: 600;
 }
@@ -65,13 +188,13 @@
 .builder__card-level {
   width: 100%;
   align-self: stretch;
-  margin: 0 4px 2px;
+  margin: 0;
   padding: 4px 6px;
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(15, 14, 36, 0.9);
   border: 1px solid rgba(143, 123, 255, 0.35);
   color: var(--ink);
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -79,11 +202,56 @@
 .builder__card-empty {
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
+  padding: 10px 0;
+}
+
+.builder__swipe-hint {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.builder__swipe-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.builder__swipe-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(143, 123, 255, 0.35);
+  transition: width 0.2s ease, background 0.2s ease;
+}
+
+.builder__swipe-dot.is-active {
+  width: 22px;
+  background: rgba(77, 155, 255, 0.7);
 }
 
 @media (max-width: 700px) {
+  .builder__swipe-shell {
+    gap: 16px;
+  }
+
+  .builder__swipe {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    border-radius: 0;
+  }
+
+  .builder__deck {
+    padding: 16px 14px 14px;
+  }
+
   .builder__deck-grid {
-    gap: 4px;
+    gap: 6px;
+  }
+
+  .builder__deck-description {
+    max-width: none;
   }
 }
