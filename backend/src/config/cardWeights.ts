@@ -10,8 +10,10 @@ export const CARD_WEIGHTS: Record<string, number> = {
   
   "Goblins": 0.2,
   
-  "Giant": 0.2,
-  "Giant (Hero)": -0.2,
+  "Giant": 0.1,
+  "Giant (Hero)": -0.1,       // Giant has hero
+
+  "Spear Goblins": 0.1,
   
   "P.E.K.K.A": -1.0,
   "P.E.K.K.A (Evo)": -2.0,
@@ -223,10 +225,22 @@ export const CARD_WEIGHTS: Record<string, number> = {
   "Lumberjack": -1.0,
   "Lumberjack (Evo)": -1.6,
   
-  "Boss Bandit": -3.0,
-  "Suspicious Bush": -1.0,
-
-  "Berserker": 1.0
+  "Monk": 0.0,
+  "Phoenix": 0.0,
+  "Rune Giant": 0.0,
+  "Spirit Empress": 0.0,
+  "Boss Bandit": 0.0,
+  "Goblin Machine": 0.0,
+  "Barbarian Barrel": 0.0,
+  "Goblin Demolisher": 0.0,
+  "Goblinstein": 0.0,
+  "Little Prince": 0.0,
+  "Bowler": 0.0,
+  "Void": 0.0,
+  "Suspicious Bush": 0.0,
+  "Goblin Curse": 0.0,
+  "Vines": 0.0,
+  "Berserker": 0.0,
 };
 
 export function getCardWeight(cardName: string): number {
