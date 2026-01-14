@@ -119,7 +119,7 @@ export default function Vote() {
             <span className="page__eyebrow">Card comparison</span>
             <h1 className="page__title">Vote</h1>
             <p className="page__subtitle">
-              Which card do you prefer? Or skip if you can't decide.
+              Which card is more ethical to use? To view a card's ethical score, click on the card in the Cards page above!
             </p>
           </div>
           <div className="page__header-actions">
