@@ -5,7 +5,7 @@ import cors from "cors";
 import { scanClanForPlayer } from "./services/clans.js";
 import { getPlayerDetails } from "./services/players.js";
 import { calculateEthicsScore } from "./services/ethics.js";
-import { crFetch } from "./crFetch.js";
+import { getCardNameEntry } from "./services/mongo.js";
 
 const BASE_URL = "https://api.clashroyale.com/v1";
 const apiKey = process.env.CLASH_ROYALE_API_KEY;
@@ -79,6 +79,16 @@ app.get("/api/ethics", async (req, res) => {
     return res.json(ethicsResult);
   } catch (e: any) {
     res.status(400).send(e?.message ?? String(e));
+  }
+});
+
+// GET /api/values/card-names
+app.get("/api/values/card-names", async (_req, res) => {
+  try {
+    const value = await getCardNameEntry();
+    return res.json({ value });
+  } catch (e: any) {
+    res.status(500).send(e?.message ?? String(e));
   }
 });
 

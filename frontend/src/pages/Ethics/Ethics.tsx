@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import ActivePlayerBadge from "../../components/ActivePlayerBadge/ActivePlayerBadge";
 import { useActivePlayer } from "../../state/ActivePlayerContext";
 import { getEthicsScore } from "../../api/ethics";
+import { getCardNameEntry } from "../../api/values";
 import { normalizeCardLevel } from "../../utils/deckBuilder";
 import "./Ethics.css";
 
@@ -80,6 +81,16 @@ export default function Ethics() {
         setLoading(false);
       });
   }, [displayPlayer?.playerTag]);
+
+  useEffect(() => {
+    getCardNameEntry()
+      .then((value) => {
+        console.log("[Ethics] Mongo card name", value);
+      })
+      .catch((err) => {
+        console.log("[Ethics] Mongo card name error", err);
+      });
+  }, []);
 
   const gradientPosition = ethicsData ? calculateGradientPosition(ethicsData.ethicsScore) : 50;
   const donationRatioDisplay = ethicsData
