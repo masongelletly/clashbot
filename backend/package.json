@@ -6,7 +6,8 @@
       "dev": "tsx watch src/index.ts",
       "build": "tsc -p tsconfig.json",
       "start": "node dist/backend/src/index.js",
-      "test:votes": "tsx src/scripts/testVoteSystem.ts"
+      "test:votes": "tsx src/scripts/testVoteSystem.ts",
+      "kill:connections": "tsx src/scripts/killAllConnections.ts"
     },
     "dependencies": {
       "cors": "^2.8.5",

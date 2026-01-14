@@ -8,6 +8,7 @@ import { calculateEthicsScore } from "./services/ethics.js";
 import { getRandomCards, processVote } from "./services/vote.js";
 import { getAllCardsWithElo } from "./services/cardsElo.js";
 import { crFetch } from "./crFetch.js";
+import { closeDatabase, getConnectionStatus, isDatabaseConnected } from "./db/mongodb.js";
 
 const BASE_URL = "https://api.clashroyale.com/v1";
 const apiKey = process.env.CLASH_ROYALE_API_KEY;
@@ -43,14 +44,51 @@ if (!apiKey) {
 }
 // backend boot
 const port = Number(process.env.PORT ?? 3001);
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Backend listening on http://localhost:${port}`);
 });
+
+// Graceful shutdown: Close MongoDB connections when server stops
+const gracefulShutdown = async (signal: string) => {
+  console.log(`\n${signal} received. Closing MongoDB connections...`);
+  try {
+    await closeDatabase();
+    console.log("MongoDB connections closed.");
+    server.close(() => {
+      console.log("HTTP server closed.");
+      process.exit(0);
+    });
+  } catch (error) {
+    console.error("Error during shutdown:", error);
+    process.exit(1);
+  }
+};
+
+// Handle shutdown signals
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 
 // --- ENDPOINTS ---
 // health check
 app.get("/health", (_req, res) => res.json({ ok: true }));
+
+// GET /api/db/status - Check MongoDB connection status
+app.get("/api/db/status", async (_req, res) => {
+  try {
+    const isConnected = isDatabaseConnected();
+    const status = await getConnectionStatus();
+    return res.json({
+      connected: isConnected,
+      ...status,
+    });
+  } catch (e: any) {
+    res.status(500).json({
+      connected: false,
+      error: e?.message ?? String(e),
+    });
+  }
+});
 
 // GET /api/players/scan?playerName=<name>&clanName=<clanName>
 app.get("/api/players/scan", async (req, res) => {

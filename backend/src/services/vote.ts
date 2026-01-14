@@ -12,6 +12,7 @@ import {
   getCardMatchups,
   updateCardElo,
   incrementMatchups,
+  batchGetCardElosAndMatchups,
 } from "./dbCards.js";
 
 // Cache for all cards (including evo/hero variants)
@@ -121,15 +122,32 @@ export async function processVote(
     const loserId = winnerId === card1Id ? card2Id : card1Id;
     const loserVar = winnerId === card1Id ? card2Variant : card1Variant;
 
-    // Get current ELO and matchups from database
-    const winnerElo = (await getCardEloFromDb(winnerId, winnerVar)) ?? getInitialElo();
-    const winnerVotes = await getCardMatchups(winnerId, winnerVar);
+    // Batch fetch ELO and matchups for both cards in ONE query
+    const { eloMap, matchupsMap } = await batchGetCardElosAndMatchups([
+      { cardId: winnerId, variant: winnerVar },
+      { cardId: loserId, variant: loserVar },
+    ]);
+
+    // Helper to get values from maps
+    const getElo = (cardId: number, variant: CardVariant): number => {
+      const key = `${cardId}-${variant}`;
+      return eloMap.get(key) ?? getInitialElo();
+    };
+
+    const getMatchups = (cardId: number, variant: CardVariant): number => {
+      const key = `${cardId}-${variant}`;
+      return matchupsMap.get(key) ?? 0;
+    };
+
+    // Get current ELO and matchups from batch-fetched data
+    const winnerElo = getElo(winnerId, winnerVar);
+    const winnerVotes = getMatchups(winnerId, winnerVar);
     const newWinnerElo = updateElo(winnerElo, true, winnerVotes);
     await updateCardElo(winnerId, winnerVar, newWinnerElo);
     await incrementMatchups(winnerId, winnerVar);
 
-    const loserElo = (await getCardEloFromDb(loserId, loserVar)) ?? getInitialElo();
-    const loserVotes = await getCardMatchups(loserId, loserVar);
+    const loserElo = getElo(loserId, loserVar);
+    const loserVotes = getMatchups(loserId, loserVar);
     const newLoserElo = updateElo(loserElo, false, loserVotes);
     await updateCardElo(loserId, loserVar, newLoserElo);
     await incrementMatchups(loserId, loserVar);

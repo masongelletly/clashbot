@@ -137,3 +137,89 @@ export async function getAllCardsFromDb(
   }
 }
 
+/**
+ * Batch fetch ELO ratings for multiple card variants
+ * Returns a map: `${cardId}-${variant}` -> elo
+ * This is much more efficient than individual queries
+ */
+export async function batchGetCardElos(
+  cardVariants: Array<{ cardId: number; variant: CardVariant }>
+): Promise<Map<string, number>> {
+  try {
+    if (cardVariants.length === 0) {
+      return new Map();
+    }
+
+    const collection = await getCardsCollection();
+    
+    // Build query to fetch all card variants at once
+    const query = {
+      $or: cardVariants.map(({ cardId, variant }) => ({
+        cardId,
+        variant,
+      })),
+    };
+
+    // Fetch all matching documents in one query
+    const cards = await collection.find(query).toArray();
+
+    // Build a map for quick lookup: "cardId-variant" -> elo
+    const eloMap = new Map<string, number>();
+    for (const card of cards) {
+      const key = `${card.cardId}-${card.variant}`;
+      eloMap.set(key, card.elo);
+    }
+
+    return eloMap;
+  } catch (error) {
+    console.error("Error batch fetching ELOs:", error);
+    return new Map();
+  }
+}
+
+/**
+ * Batch fetch ELO and matchups for multiple card variants
+ * Returns maps: `${cardId}-${variant}` -> value
+ * This is much more efficient than individual queries
+ */
+export async function batchGetCardElosAndMatchups(
+  cardVariants: Array<{ cardId: number; variant: CardVariant }>
+): Promise<{
+  eloMap: Map<string, number>;
+  matchupsMap: Map<string, number>;
+}> {
+  try {
+    if (cardVariants.length === 0) {
+      return { eloMap: new Map(), matchupsMap: new Map() };
+    }
+
+    const collection = await getCardsCollection();
+    
+    // Build query to fetch all card variants at once
+    const query = {
+      $or: cardVariants.map(({ cardId, variant }) => ({
+        cardId,
+        variant,
+      })),
+    };
+
+    // Fetch all matching documents in one query
+    const cards = await collection.find(query).toArray();
+
+    // Build maps for quick lookup: "cardId-variant" -> value
+    const eloMap = new Map<string, number>();
+    const matchupsMap = new Map<string, number>();
+    
+    for (const card of cards) {
+      const key = `${card.cardId}-${card.variant}`;
+      eloMap.set(key, card.elo);
+      matchupsMap.set(key, card.matchups ?? 0);
+    }
+
+    return { eloMap, matchupsMap };
+  } catch (error) {
+    console.error("Error batch fetching ELOs and matchups:", error);
+    return { eloMap: new Map(), matchupsMap: new Map() };
+  }
+}
+
