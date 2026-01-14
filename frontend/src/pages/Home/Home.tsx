@@ -103,6 +103,11 @@ export default function Home() {
                 Let Clashbot determine if you are an ethical ruler
               </div>
             </div>
+            <div className="home__vote-cta">
+              <Link className="home__primary-btn" to="/vote">
+                Help us improve our Ethics matrix, Vote Here
+              </Link>
+            </div>
           </div>
 
           {!showWelcomeCard ? (
@@ -176,6 +181,11 @@ export default function Home() {
                   Deck builder
                 </Link>
               </div>
+              <div className="home__vote-cta">
+                <Link className="home__primary-btn" to="/vote">
+                  Help us improve our Ethics matrix, Vote Here
+                </Link>
+              </div>
               <button className="home__ghost-btn" type="button" onClick={onSwitchPlayer}>
                 Search another player
               </button>
@@ -221,6 +231,11 @@ export default function Home() {
                     onClick={() => setPlayer(primaryMatch)}
                   >
                     Deck builder
+                  </Link>
+                </div>
+                <div className="home__vote-cta">
+                  <Link className="home__primary-btn" to="/vote">
+                    Help us improve our Ethics matrix, Vote Here
                   </Link>
                 </div>
               </div>

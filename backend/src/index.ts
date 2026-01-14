@@ -5,6 +5,8 @@ import cors from "cors";
 import { scanClanForPlayer } from "./services/clans.js";
 import { getPlayerDetails } from "./services/players.js";
 import { calculateEthicsScore } from "./services/ethics.js";
+import { getRandomCards, processVote } from "./services/vote.js";
+import { getAllCardsWithElo } from "./services/cardsElo.js";
 import { crFetch } from "./crFetch.js";
 
 const BASE_URL = "https://api.clashroyale.com/v1";
@@ -159,5 +161,60 @@ app.get("/api/test-badges", async (req, res) => {
       error: e?.message ?? String(e),
       stack: e?.stack
     });
+  }
+});
+
+// GET /api/vote/random-cards - Get two random cards for voting
+app.get("/api/vote/random-cards", async (req, res) => {
+  try {
+    const randomCards = await getRandomCards();
+    return res.json(randomCards);
+  } catch (e: any) {
+    res.status(400).send(e?.message ?? String(e));
+  }
+});
+
+// POST /api/vote - Submit a vote between two cards
+app.post("/api/vote", async (req, res) => {
+  try {
+    const voteRequest = req.body;
+    
+    // Validate request
+    if (typeof voteRequest.card1Id !== "number" || typeof voteRequest.card2Id !== "number") {
+      return res.status(400).send("card1Id and card2Id are required numbers");
+    }
+    if (!voteRequest.card1Variant || !voteRequest.card2Variant) {
+      return res.status(400).send("card1Variant and card2Variant are required");
+    }
+    if (!["base", "evo", "hero"].includes(voteRequest.card1Variant) || 
+        !["base", "evo", "hero"].includes(voteRequest.card2Variant)) {
+      return res.status(400).send("card1Variant and card2Variant must be 'base', 'evo', or 'hero'");
+    }
+    if (voteRequest.winnerCardId !== null && typeof voteRequest.winnerCardId !== "number") {
+      return res.status(400).send("winnerCardId must be a number or null");
+    }
+    if (voteRequest.winnerCardId !== null && !voteRequest.winnerVariant) {
+      return res.status(400).send("winnerVariant is required when winnerCardId is not null");
+    }
+    if (voteRequest.winnerCardId !== null && 
+        voteRequest.winnerCardId !== voteRequest.card1Id && 
+        voteRequest.winnerCardId !== voteRequest.card2Id) {
+      return res.status(400).send("winnerCardId must match card1Id or card2Id");
+    }
+
+    const voteResponse = await processVote(voteRequest);
+    return res.json(voteResponse);
+  } catch (e: any) {
+    res.status(400).send(e?.message ?? String(e));
+  }
+});
+
+// GET /api/cards - Get all cards with ELO and ethics values
+app.get("/api/cards", async (req, res) => {
+  try {
+    const cardsWithElo = await getAllCardsWithElo();
+    return res.json({ items: cardsWithElo });
+  } catch (e: any) {
+    res.status(400).send(e?.message ?? String(e));
   }
 });

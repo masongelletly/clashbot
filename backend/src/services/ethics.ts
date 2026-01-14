@@ -1,47 +1,6 @@
 import type * as CRTypes from "../../../shared/types/cr-api-types";
-import { getCardWeight, CARD_WEIGHTS } from "../config/cardWeights.js";
 import { getPlayerDetails } from "./players.js";
-
-/**
- * Get weight for a card, checking for evo/hero variants first
- * Only uses evo/hero weights if the card actually has those variants (based on iconUrls)
- * Supports both formats: "CardName (Evo)" and "CardName(Evo)"
- */
-function getCardWeightWithVariants(
-  cardName: string, 
-  isEvo: boolean, 
-  isHero: boolean,
-  hasEvoIcon: boolean,
-  hasHeroIcon: boolean
-): number {
-  // Only try evo/hero specific weights if:
-  // 1. The slot is showing evo/hero (isEvo/isHero is true)
-  // 2. The card actually has that variant (hasEvoIcon/hasHeroIcon is true)
-  if (isEvo && hasEvoIcon) {
-    // Try both formats: with space and without space
-    const evoKeyWithSpace = `${cardName} (Evo)`;
-    const evoKeyNoSpace = `${cardName}(Evo)`;
-    if (evoKeyWithSpace in CARD_WEIGHTS) {
-      return getCardWeight(evoKeyWithSpace);
-    }
-    if (evoKeyNoSpace in CARD_WEIGHTS) {
-      return getCardWeight(evoKeyNoSpace);
-    }
-  }
-  if (isHero && hasHeroIcon) {
-    // Try both formats: with space and without space
-    const heroKeyWithSpace = `${cardName} (Hero)`;
-    const heroKeyNoSpace = `${cardName}(Hero)`;
-    if (heroKeyWithSpace in CARD_WEIGHTS) {
-      return getCardWeight(heroKeyWithSpace);
-    }
-    if (heroKeyNoSpace in CARD_WEIGHTS) {
-      return getCardWeight(heroKeyNoSpace);
-    }
-  }
-  // Fall back to base card weight
-  return getCardWeight(cardName);
-}
+import { getCardEthicalScore } from "./cardElo.js";
 
 /**
  * Calculate ethics score for a player based on their current deck
@@ -73,8 +32,11 @@ export async function calculateEthicsScore(
   } | null> = Array.from({ length: 8 }, () => null);
   
   // Fill slots with cards from current deck
-  currentDeck.forEach((card, index) => {
-    if (index < 8) {
+  // Use Promise.all to handle async getCardEthicalScore calls
+  await Promise.all(
+    currentDeck.map(async (card, index) => {
+      if (index >= 8) return;
+      
       const evolutionLevel = (card as any).evolutionLevel;
       const hasEvolution = evolutionLevel === 1 || evolutionLevel === 3;
       const hasHero = evolutionLevel === 2 || evolutionLevel === 3;
@@ -102,8 +64,9 @@ export async function calculateEthicsScore(
         iconUrl = card.iconUrls?.medium ?? card.iconUrls?.evolutionMedium ?? card.iconUrls?.heroMedium;
       }
       
-      // Get weight (check for evo/hero variants only if card actually has them)
-      const weight = getCardWeightWithVariants(card.name, showEvo, showHero, hasEvoIcon, hasHeroIcon);
+      // Get ethical score from ELO in database
+      // Evo/hero variants have separate ELO ratings stored in the database
+      const ethicalScore = await getCardEthicalScore(card.id, card.name, showEvo, showHero);
       
       deckSlots[index] = {
         id: card.id,
@@ -112,13 +75,13 @@ export async function calculateEthicsScore(
         maxLevel: card.maxLevel,
         elixirCost: card.elixirCost,
         iconUrl,
-        weight,
+        weight: ethicalScore,
         isEvo: showEvo,
         isHero: showHero,
         slotIndex: index,
       };
-    }
-  });
+    })
+  );
   
   // Calculate total deck score
   let deckScore = 0;

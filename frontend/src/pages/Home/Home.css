@@ -243,6 +243,10 @@
   gap: 12px;
 }
 
+.home__vote-cta {
+  margin-top: 8px;
+}
+
 .home__hint {
   padding: 12px 14px;
   border-radius: 16px;
