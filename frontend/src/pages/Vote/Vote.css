@@ -48,6 +48,7 @@
   width: 100%;
   display: grid;
   gap: 0.6rem;
+  overflow: visible;
 }
 
 .vote__card-button {
@@ -62,6 +63,7 @@
   display: block;
   position: relative;
   text-align: center;
+  overflow: visible;
 }
 
 .vote__card-button:hover:not(:disabled) {
@@ -126,7 +128,7 @@
   font-size: 2rem;
   font-weight: bold;
   pointer-events: none;
-  z-index: 100;
+  z-index: 1000;
   animation: vote-elo-float 2s ease-out forwards;
 }
 
