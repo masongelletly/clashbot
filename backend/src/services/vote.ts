@@ -180,6 +180,13 @@ export async function processVote(
     console.log(
       `Vote processed: Card ${winnerId} (${winnerVar}) won (ELO +${winnerEloChange.toFixed(1)}), Card ${loserId} (${loserVar}) lost (ELO -${loserEloChange.toFixed(1)}). Matchups incremented for both.`
     );
+
+    return {
+      success: true,
+      message: "Vote processed successfully",
+      winnerEloChange,
+      loserEloChange,
+    };
   }
 
   return {
