@@ -3,7 +3,9 @@
 // ELO Configuration Constants
 export const ELO_NEUTRAL = 1500; // Baseline: cards start here (ethically neutral)
 export const ELO_SENSITIVITY = 400; // Controls how fast scores approach ±2.0
-export const ELO_BASE_CHANGE = 32; // Base ELO change per vote (reduces over time)
+export const ELO_BASE_CHANGE = 32; // Base K-factor before vote-count reduction
+export const ELO_EXPECTED_SCALE = 400; // Rating difference scale for expected score
+export const ELO_VOLATILITY_MULTIPLIER = 1.3; // 1.3x volatility scaling
 
 /**
  * Convert ELO rating to ethical score
@@ -22,21 +24,39 @@ export function eloToEthicalScore(elo: number): number {
 }
 
 /**
- * Calculate ELO change per vote based on number of votes
- * 
- * Reduces volatility over time to prevent manipulation and stabilize mature cards.
- * Formula: K = max(8, ELO_BASE_CHANGE / sqrt(number_of_votes))
- * 
- * calculateEloChange(1)   // 32 (new card)
- * calculateEloChange(16)  // 8 (mature card)
- * calculateEloChange(100) // 8 (very mature card)
+ * Calculate expected score given the opponent rating
+ *
+ * Formula: expected = 1 / (1 + 10^((opponent - current) / ELO_EXPECTED_SCALE))
  */
-export function calculateEloChange(numberOfVotes: number): number {
-  if (numberOfVotes <= 0) {
-    return ELO_BASE_CHANGE;
+export function calculateExpectedScore(
+  currentElo: number,
+  opponentElo: number
+): number {
+  return 1 / (1 + Math.pow(10, (opponentElo - currentElo) / ELO_EXPECTED_SCALE));
+}
+
+/**
+ * Calculate ELO change per vote (includes opponent strength and volatility scaling)
+ *
+ * Formula: Δ = K * V * (actual - expected)
+ * K = max(8, ELO_BASE_CHANGE / sqrt(number_of_votes))
+ * V = ELO_VOLATILITY_MULTIPLIER (1.3x)
+ */
+export function calculateEloChange(
+  currentElo: number,
+  opponentElo: number,
+  isWinner: boolean,
+  numberOfVotes: number
+): number {
+  let baseK = ELO_BASE_CHANGE;
+  if (numberOfVotes > 0) {
+    const volatilityReduction = ELO_BASE_CHANGE / Math.sqrt(numberOfVotes);
+    baseK = Math.max(8, volatilityReduction);
   }
-  const volatilityReduction = ELO_BASE_CHANGE / Math.sqrt(numberOfVotes);
-  return Math.max(8, volatilityReduction);
+  const kFactor = baseK * ELO_VOLATILITY_MULTIPLIER;
+  const expectedScore = calculateExpectedScore(currentElo, opponentElo);
+  const actualScore = isWinner ? 1 : 0;
+  return kFactor * (actualScore - expectedScore);
 }
 
 /**
@@ -44,13 +64,17 @@ export function calculateEloChange(numberOfVotes: number): number {
  */
 export function updateElo(
   currentElo: number,
+  opponentElo: number,
   isWinner: boolean,
   numberOfVotes: number
 ): number {
-  const eloChange = calculateEloChange(numberOfVotes);
-  return isWinner 
-    ? currentElo + eloChange 
-    : currentElo - eloChange;
+  const eloChange = calculateEloChange(
+    currentElo,
+    opponentElo,
+    isWinner,
+    numberOfVotes
+  );
+  return currentElo + eloChange;
 }
 
 /**

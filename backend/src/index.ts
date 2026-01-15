@@ -7,7 +7,6 @@ import { getPlayerDetails } from "./services/players.js";
 import { calculateEthicsScore } from "./services/ethics.js";
 import { getRandomCards, processVote } from "./services/vote.js";
 import { getAllCardsWithElo } from "./services/cardsElo.js";
-import { crFetch } from "./crFetch.js";
 import { closeDatabase, getConnectionStatus, isDatabaseConnected } from "./db/mongodb.js";
 
 const BASE_URL = "https://api.clashroyale.com/v1";

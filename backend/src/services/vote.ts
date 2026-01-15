@@ -3,7 +3,6 @@ import { getAllCards } from "./cards.js";
 import {
   getInitialElo,
   updateElo,
-  calculateEloChange,
 } from "./elo.js";
 import {
   incrementMatchups,
@@ -133,38 +132,45 @@ export async function processVote(
   }
   
   if (winnerCardId === null) {
-    // Neither card was selected - just increment matchup counts
     await incrementMatchups(card1Id, card1Variant);
     await incrementMatchups(card2Id, card2Variant);
     console.log(`Neither card selected. Matchups incremented for card ${card1Id} (${card1Variant}) and card ${card2Id} (${card2Variant})`);
+
+    return {
+      success: true,
+      message: "Vote processed successfully",
+      eloDeltas: [
+        { cardId: card1Id, variant: card1Variant, delta: 0 },
+        { cardId: card2Id, variant: card2Variant, delta: 0 },
+      ],
+    };
   } else {
-    // One card was selected as winner
     const winnerId = winnerCardId;
     const winnerVar = winnerId === card1Id ? card1Variant : card2Variant;
     const loserId = winnerId === card1Id ? card2Id : card1Id;
     const loserVar = winnerId === card1Id ? card2Variant : card1Variant;
 
-    // Batch fetch ELO and matchups for both cards in ONE query
     const { eloMap, matchupsMap } = await batchGetCardElosAndMatchups([
       { cardId: winnerId, variant: winnerVar },
       { cardId: loserId, variant: loserVar },
     ]);
-
-    // Helper to get values from maps
     const getElo = (cardId: number, variant: CRTypes.CardVariant): number => {
       const key = `${cardId}-${variant}`;
       return eloMap.get(key) ?? getInitialElo();
     };
-
     const getMatchups = (cardId: number, variant: CRTypes.CardVariant): number => {
       const key = `${cardId}-${variant}`;
       return matchupsMap.get(key) ?? 0;
     };
 
-    // Get current ELO and matchups from batch-fetched data
+    const loserElo = getElo(loserId, loserVar);
+    const loserVotes = getMatchups(loserId, loserVar);
     const winnerElo = getElo(winnerId, winnerVar);
     const winnerVotes = getMatchups(winnerId, winnerVar);
-    const newWinnerElo = updateElo(winnerElo, true, winnerVotes);
+
+    const newWinnerElo = updateElo(winnerElo, loserElo, true, winnerVotes);
+    const newLoserElo = updateElo(loserElo, winnerElo, false, loserVotes);
+
     await recordMatchResult(
       winnerId,
       winnerVar,
@@ -173,10 +179,6 @@ export async function processVote(
       loserId,
       loserVar
     );
-
-    const loserElo = getElo(loserId, loserVar);
-    const loserVotes = getMatchups(loserId, loserVar);
-    const newLoserElo = updateElo(loserElo, false, loserVotes);
     await recordMatchResult(
       loserId,
       loserVar,
@@ -186,16 +188,22 @@ export async function processVote(
       winnerVar
     );
 
-    const winnerEloChange = calculateEloChange(winnerVotes);
-    const loserEloChange = calculateEloChange(loserVotes);
+    const winnerEloChange = newWinnerElo - winnerElo;
+    const loserEloChange = newLoserElo - loserElo;
+    const formatEloDelta = (delta: number): string =>
+      `${delta >= 0 ? "+" : ""}${delta.toFixed(2)}`;
 
     console.log(
-      `Vote processed: Card ${winnerId} (${winnerVar}) won (ELO +${winnerEloChange.toFixed(1)}), Card ${loserId} (${loserVar}) lost (ELO -${loserEloChange.toFixed(1)}). Matchups incremented for both.`
+      `Vote processed: Card ${winnerId} (${winnerVar}) won (ELO ${formatEloDelta(winnerEloChange)}), Card ${loserId} (${loserVar}) lost (ELO ${formatEloDelta(loserEloChange)}). Matchups incremented for both.`
     );
-  }
 
-  return {
-    success: true,
-    message: "Vote processed successfully",
-  };
+    return {
+      success: true,
+      message: "Vote processed successfully",
+      eloDeltas: [
+        { cardId: winnerId, variant: winnerVar, delta: winnerEloChange },
+        { cardId: loserId, variant: loserVar, delta: loserEloChange },
+      ],
+    };
+  }
 }

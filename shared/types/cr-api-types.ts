@@ -169,9 +169,16 @@ export type VoteRequest = {
   winnerVariant?: CardVariant; // Required if winnerCardId is not null
 };
 
+export type VoteEloDelta = {
+  cardId: number;
+  variant: CardVariant;
+  delta: number;
+};
+
 export type VoteResponse = {
   success: boolean;
   message?: string;
+  eloDeltas?: VoteEloDelta[];
 };
 
 export type RandomCardsResponse = {

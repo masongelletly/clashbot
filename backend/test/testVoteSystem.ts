@@ -27,10 +27,10 @@ async function displayCardState(
 ): Promise<void> {
   const elo = (await getCardElo(cardId, variant)) ?? getInitialElo();
   const matchups = await getCardMatchups(cardId, variant);
-  const eloChange = calculateEloChange(matchups);
+  const eloChange = Math.abs(calculateEloChange(elo, elo, true, matchups));
   
   console.log(
-    `  ${cardName} (ID: ${cardId}, ${variant}): ELO=${elo.toFixed(1)}, Matchups=${matchups}, Next Change=±${eloChange.toFixed(1)}`
+    `  ${cardName} (ID: ${cardId}, ${variant}): ELO=${elo.toFixed(1)}, Matchups=${matchups}, Next Change vs equal=±${eloChange.toFixed(2)}`
   );
 }
 
@@ -59,8 +59,8 @@ async function performVote(
   const loserVotes = await getCardMatchups(loserId, loserVar);
 
   // Calculate new ELO
-  const newWinnerElo = updateElo(winnerElo, true, winnerVotes);
-  const newLoserElo = updateElo(loserElo, false, loserVotes);
+  const newWinnerElo = updateElo(winnerElo, loserElo, true, winnerVotes);
+  const newLoserElo = updateElo(loserElo, winnerElo, false, loserVotes);
 
   // Update database
   await updateCardElo(winnerId, winnerVar, newWinnerElo, winnerName);
@@ -68,17 +68,19 @@ async function performVote(
   await updateCardElo(loserId, loserVar, newLoserElo, loserName);
   await incrementMatchups(loserId, loserVar, loserName);
 
-  const winnerEloChange = calculateEloChange(winnerVotes);
-  const loserEloChange = calculateEloChange(loserVotes);
+  const winnerEloChange = newWinnerElo - winnerElo;
+  const loserEloChange = newLoserElo - loserElo;
+  const formatEloDelta = (delta: number): string =>
+    `${delta >= 0 ? "+" : ""}${delta.toFixed(2)}`;
 
   console.log(
     `  ✓ Vote: ${winnerName} (${winnerVar}) beat ${loserName} (${loserVar})`
   );
   console.log(
-    `    ${winnerName}: ${winnerElo.toFixed(1)} → ${newWinnerElo.toFixed(1)} (+${winnerEloChange.toFixed(1)})`
+    `    ${winnerName}: ${winnerElo.toFixed(1)} → ${newWinnerElo.toFixed(1)} (${formatEloDelta(winnerEloChange)})`
   );
   console.log(
-    `    ${loserName}: ${loserElo.toFixed(1)} → ${newLoserElo.toFixed(1)} (-${loserEloChange.toFixed(1)})`
+    `    ${loserName}: ${loserElo.toFixed(1)} → ${newLoserElo.toFixed(1)} (${formatEloDelta(loserEloChange)})`
   );
 }
 
@@ -202,4 +204,3 @@ runTest()
     console.error("\n💥 Test suite failed:", error);
     process.exit(1);
   });
-

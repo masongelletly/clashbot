@@ -5,13 +5,18 @@ import "./Vote.css";
 
 import type * as CRTypes from "../../../../shared/types/cr-api-types";
 
-const ELO_CHANGE = 32; // Should match backend ELO_BASE_CHANGE (reduces over time)
-
 type EloAnimation = {
   id: string;
   cardId: number;
-  value: number;
-  isPositive: boolean;
+  delta: number;
+};
+
+const formatEloDelta = (delta: number): string => {
+  const rounded = Math.round(delta);
+  if (rounded === 0) {
+    return "0";
+  }
+  return `${rounded > 0 ? "+" : ""}${rounded}`;
 };
 
 export default function Vote() {
@@ -71,36 +76,8 @@ export default function Vote() {
     const winnerVariant = winnerCardId === card1.id ? card1Variant : 
                           winnerCardId === card2.id ? card2Variant : undefined;
 
-    // Show ELO animations
-    if (winnerCardId !== null) {
-      const winnerId = winnerCardId;
-      const loserId = winnerId === card1.id ? card2.id : card1.id;
-      
-      const newAnimations: EloAnimation[] = [
-        {
-          id: `winner-${Date.now()}-${Math.random()}`,
-          cardId: winnerId,
-          value: ELO_CHANGE,
-          isPositive: true,
-        },
-        {
-          id: `loser-${Date.now()}-${Math.random()}`,
-          cardId: loserId,
-          value: -ELO_CHANGE,
-          isPositive: false,
-        },
-      ];
-      
-      setEloAnimations(newAnimations);
-      
-      // Remove animations after they finish
-      setTimeout(() => {
-        setEloAnimations([]);
-      }, 2000);
-    }
-
     try {
-      await submitVote({
+      const response = await submitVote({
         card1Id: card1.id,
         card1Variant,
         card2Id: card2.id,
@@ -108,6 +85,25 @@ export default function Vote() {
         winnerCardId,
         winnerVariant,
       });
+
+      if (response.eloDeltas && response.eloDeltas.length > 0) {
+        const timestamp = Date.now();
+        const newAnimations = response.eloDeltas
+          .filter((delta) => delta.delta !== 0)
+          .map((delta, index) => ({
+            id: `${delta.cardId}-${timestamp}-${index}`,
+            cardId: delta.cardId,
+            delta: delta.delta,
+          }));
+
+        if (newAnimations.length > 0) {
+          setEloAnimations(newAnimations);
+          setTimeout(() => {
+            setEloAnimations([]);
+          }, 2000);
+        }
+      }
+
       // Small delay to let animations play before loading new cards
       setTimeout(async () => {
         await loadCards();
@@ -174,10 +170,10 @@ export default function Vote() {
                       <div
                         key={anim.id}
                         className={`vote__elo-animation ${
-                          anim.isPositive ? "vote__elo-animation--positive" : "vote__elo-animation--negative"
+                          anim.delta >= 0 ? "vote__elo-animation--positive" : "vote__elo-animation--negative"
                         }`}
                       >
-                        {anim.isPositive ? "+" : ""}{anim.value}
+                        {formatEloDelta(anim.delta)}
                       </div>
                     ))}
                 </button>
@@ -211,10 +207,10 @@ export default function Vote() {
                       <div
                         key={anim.id}
                         className={`vote__elo-animation ${
-                          anim.isPositive ? "vote__elo-animation--positive" : "vote__elo-animation--negative"
+                          anim.delta >= 0 ? "vote__elo-animation--positive" : "vote__elo-animation--negative"
                         }`}
                       >
-                        {anim.isPositive ? "+" : ""}{anim.value}
+                        {formatEloDelta(anim.delta)}
                       </div>
                     ))}
                 </button>
