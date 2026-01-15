@@ -1,47 +1,10 @@
 import type * as CRTypes from "../../../shared/types/cr-api-types";
-import { getCardWeight, CARD_WEIGHTS } from "../config/cardWeights.js";
 import { getPlayerDetails } from "./players.js";
+import { eloToEthicalScore, getInitialElo } from "./elo.js";
+import { batchGetCardElosAndMatchups } from "./dbCards.js";
+import type { CardVariant } from "./cardElo.js";
 
-/**
- * Get weight for a card, checking for evo/hero variants first
- * Only uses evo/hero weights if the card actually has those variants (based on iconUrls)
- * Supports both formats: "CardName (Evo)" and "CardName(Evo)"
- */
-function getCardWeightWithVariants(
-  cardName: string, 
-  isEvo: boolean, 
-  isHero: boolean,
-  hasEvoIcon: boolean,
-  hasHeroIcon: boolean
-): number {
-  // Only try evo/hero specific weights if:
-  // 1. The slot is showing evo/hero (isEvo/isHero is true)
-  // 2. The card actually has that variant (hasEvoIcon/hasHeroIcon is true)
-  if (isEvo && hasEvoIcon) {
-    // Try both formats: with space and without space
-    const evoKeyWithSpace = `${cardName} (Evo)`;
-    const evoKeyNoSpace = `${cardName}(Evo)`;
-    if (evoKeyWithSpace in CARD_WEIGHTS) {
-      return getCardWeight(evoKeyWithSpace);
-    }
-    if (evoKeyNoSpace in CARD_WEIGHTS) {
-      return getCardWeight(evoKeyNoSpace);
-    }
-  }
-  if (isHero && hasHeroIcon) {
-    // Try both formats: with space and without space
-    const heroKeyWithSpace = `${cardName} (Hero)`;
-    const heroKeyNoSpace = `${cardName}(Hero)`;
-    if (heroKeyWithSpace in CARD_WEIGHTS) {
-      return getCardWeight(heroKeyWithSpace);
-    }
-    if (heroKeyNoSpace in CARD_WEIGHTS) {
-      return getCardWeight(heroKeyNoSpace);
-    }
-  }
-  // Fall back to base card weight
-  return getCardWeight(cardName);
-}
+type DeckCard = NonNullable<CRTypes.PlayerProfileResponse["currentDeck"]>[number];
 
 /**
  * Calculate ethics score for a player based on their current deck
@@ -72,53 +35,82 @@ export async function calculateEthicsScore(
     slotIndex: number;
   } | null> = Array.from({ length: 8 }, () => null);
   
-  // Fill slots with cards from current deck
-  currentDeck.forEach((card, index) => {
-    if (index < 8) {
-      const evolutionLevel = (card as any).evolutionLevel;
-      const hasEvolution = evolutionLevel === 1 || evolutionLevel === 3;
-      const hasHero = evolutionLevel === 2 || evolutionLevel === 3;
-      
-      const isEvolutionSlot = index < evoSlotCount;
-      const isHeroSlot = index >= 2 && index < 4;
-      
-      // Check if card actually has evo/hero variants (based on iconUrls from API)
-      const hasEvoIcon = !!card.iconUrls?.evolutionMedium;
-      const hasHeroIcon = !!card.iconUrls?.heroMedium;
-      
-      // Determine if this slot should show evo/hero
-      // Only show if the card has the variant AND meets slot/trophy requirements
-      const showEvo = isEvolutionSlot && hasEvolution && hasEvoIcon;
-      const showHero = isHeroSlot && hasHero && hasHeroIcon && 
-        ((index === 2 && trophies >= 5000) || (index === 3 && trophies >= 10000));
-      
-      // Get appropriate icon
-      let iconUrl: string | undefined;
-      if (showEvo && card.iconUrls?.evolutionMedium) {
-        iconUrl = card.iconUrls.evolutionMedium;
-      } else if (showHero && card.iconUrls?.heroMedium) {
-        iconUrl = card.iconUrls.heroMedium;
-      } else {
-        iconUrl = card.iconUrls?.medium ?? card.iconUrls?.evolutionMedium ?? card.iconUrls?.heroMedium;
-      }
-      
-      // Get weight (check for evo/hero variants only if card actually has them)
-      const weight = getCardWeightWithVariants(card.name, showEvo, showHero, hasEvoIcon, hasHeroIcon);
-      
-      deckSlots[index] = {
-        id: card.id,
-        name: card.name,
-        level: card.level,
-        maxLevel: card.maxLevel,
-        elixirCost: card.elixirCost,
-        iconUrl,
-        weight,
-        isEvo: showEvo,
-        isHero: showHero,
-        slotIndex: index,
-      };
+  // Step 1: Determine variants needed for all cards in deck
+  const cardVariantsToFetch: Array<{ cardId: number; variant: CardVariant }> = [];
+  const slotInfo: Array<{
+    card: DeckCard;
+    index: number;
+    showEvo: boolean;
+    showHero: boolean;
+    variant: CardVariant;
+  }> = [];
+
+  for (let index = 0; index < Math.min(currentDeck.length, 8); index++) {
+    const card = currentDeck[index];
+    
+    const evolutionLevel = (card as any).evolutionLevel;
+    const hasEvolution = evolutionLevel === 1 || evolutionLevel === 3;
+    const hasHero = evolutionLevel === 2 || evolutionLevel === 3;
+    
+    const isEvolutionSlot = index < evoSlotCount;
+    const isHeroSlot = index >= 2 && index < 4;
+    
+    // Check if card actually has evo/hero variants (based on iconUrls from API)
+    const hasEvoIcon = !!card.iconUrls?.evolutionMedium;
+    const hasHeroIcon = !!card.iconUrls?.heroMedium;
+    
+    // Determine if this slot should show evo/hero
+    const showEvo = isEvolutionSlot && hasEvolution && hasEvoIcon;
+    const showHero = isHeroSlot && hasHero && hasHeroIcon && 
+      ((index === 2 && trophies >= 5000) || (index === 3 && trophies >= 10000));
+    
+    const variant: CardVariant = showEvo ? "evo" : showHero ? "hero" : "base";
+    
+    // Add to batch fetch list
+    cardVariantsToFetch.push({ cardId: card.id, variant });
+    
+    // Store slot info for later
+    slotInfo.push({ card, index, showEvo, showHero, variant });
+  }
+
+  // Step 2: Batch fetch all ELOs in ONE database query
+  const { eloMap } = await batchGetCardElosAndMatchups(cardVariantsToFetch);
+  
+  // Helper function to get ELO from map
+  const getElo = (cardId: number, variant: CardVariant): number => {
+    const key = `${cardId}-${variant}`;
+    return eloMap.get(key) ?? getInitialElo();
+  };
+
+  // Step 3: Build deck slots with ELO data
+  for (const { card, index, showEvo, showHero, variant } of slotInfo) {
+    // Get appropriate icon
+    let iconUrl: string | undefined;
+    if (showEvo && card.iconUrls?.evolutionMedium) {
+      iconUrl = card.iconUrls.evolutionMedium;
+    } else if (showHero && card.iconUrls?.heroMedium) {
+      iconUrl = card.iconUrls.heroMedium;
+    } else {
+      iconUrl = card.iconUrls?.medium ?? card.iconUrls?.evolutionMedium ?? card.iconUrls?.heroMedium;
     }
-  });
+    
+    // Get ELO from batch-fetched map and convert to ethical score
+    const elo = getElo(card.id, variant);
+    const ethicalScore = eloToEthicalScore(elo);
+    
+    deckSlots[index] = {
+      id: card.id,
+      name: card.name,
+      level: card.level,
+      maxLevel: card.maxLevel,
+      elixirCost: card.elixirCost,
+      iconUrl,
+      weight: ethicalScore,
+      isEvo: showEvo,
+      isHero: showHero,
+      slotIndex: index,
+    };
+  }
   
   // Calculate total deck score
   let deckScore = 0;

@@ -103,6 +103,11 @@ export default function Home() {
                 Let Clashbot determine if you are an ethical ruler
               </div>
             </div>
+            <div className="home__vote-cta">
+              <Link className="home__primary-btn home__vote-btn" to="/vote">
+                Vote on Card Ethics
+              </Link>
+            </div>
           </div>
 
           {!showWelcomeCard ? (

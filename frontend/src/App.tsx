@@ -3,6 +3,8 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Builder from "./pages/Builder/Builder";
 import Ethics from "./pages/Ethics/Ethics";
 import Home from "./pages/Home/Home";
+import Vote from "./pages/Vote/Vote";
+import Cards from "./pages/Cards/Cards";
 import {
   ActivePlayerProvider,
   useActivePlayer,
@@ -40,6 +42,8 @@ export default function App() {
               </RequireActivePlayer>
             }
           />
+          <Route path="/vote" element={<Vote />} />
+          <Route path="/cards" element={<Cards />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

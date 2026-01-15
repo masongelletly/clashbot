@@ -38,8 +38,10 @@ export async function scanClanForPlayer(
       if (CRUtils.normalizeName(m.name) === desiredName) {
         matches.push({
           playerTag: m.tag,
+          playerName: m.name,
           clanTag: clan.tag,
           clanName: clan.name,
+          role: m.role,
           matchedMemberName: m.name,
           matchedTrophies: m.trophies,
         });

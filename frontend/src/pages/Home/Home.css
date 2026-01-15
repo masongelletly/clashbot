@@ -243,6 +243,49 @@
   gap: 12px;
 }
 
+.home__vote-cta {
+  margin-top: 12px;
+  width: 100%;
+}
+
+.home__vote-btn {
+  width: 100%;
+  padding: 18px 24px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 20px;
+  background: linear-gradient(120deg, #ffd36b 0%, var(--accent) 45%, var(--accent-strong) 100%);
+  background-size: 200% 200%;
+  box-shadow:
+    0 18px 38px rgba(18, 28, 120, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+  position: relative;
+  overflow: hidden;
+  animation: home-vote-glow 5s ease-in-out infinite;
+}
+
+.home__vote-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.45), transparent 55%);
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.home__vote-btn:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow:
+    0 22px 44px rgba(18, 28, 120, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.22) inset;
+}
+
+.home__vote-btn:hover:not(:disabled)::after {
+  opacity: 0.85;
+}
+
 .home__hint {
   padding: 12px 14px;
   border-radius: 16px;
@@ -377,6 +420,24 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes home-vote-glow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home__vote-btn {
+    animation: none;
   }
 }
 

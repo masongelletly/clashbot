@@ -60,42 +60,26 @@ export type PlayerLeagueStatistics = {
 };
 export type LeagueSeasonResult = {
   id: string;
-  rank: number;
   trophies: number;
-  bestTrophies: number;
-};
-
-
-// clans.ts
-export type ClanSearchResponse = {
-  items: Array<{
-    tag: string;
-    name: string;
-    members: number;
-  }>;
-};
-export type ClanMembersResponse = {
-  items: Array<{
-    tag: string;
-    name: string;
-    trophies: number;
-    role?: string;
-  }>;
 };
 export type scanClanForPlayerInput = {
-  apiKey: string;
   playerName: string;
   clanName: string;
   maxClansToScan?: number;
+  apiKey?: string;
 };
+
 export type scanClanForPlayerResponse = {
   playerTag: string;
+  playerName: string;
   clanTag: string;
   clanName: string;
-  matchedMemberName: string;
-  matchedTrophies: number;
+  role: string;
+  matchedMemberName?: string;
+  matchedTrophies?: number;
 };
-export type ScanPlayersResponse = { // proxy api response
+
+export type ScanPlayersResponse = {
   matches: scanClanForPlayerResponse[];
   playerDetails: PlayerProfileResponse | null;
 };
@@ -171,4 +155,97 @@ export type EthicsCalculationResult = {
     isHero: boolean;
     slotIndex: number;
   } | null>;
+};
+
+// vote.ts
+export type CardVariant = "base" | "evo" | "hero";
+
+export type VoteRequest = {
+  card1Id: number;
+  card1Variant: CardVariant;
+  card2Id: number;
+  card2Variant: CardVariant;
+  winnerCardId: number | null; // null means neither was selected
+  winnerVariant?: CardVariant; // Required if winnerCardId is not null
+};
+
+export type VoteResponse = {
+  success: boolean;
+  message?: string;
+};
+
+export type RandomCardsResponse = {
+  card1: Card;
+  card2: Card;
+  card1Variant: CardVariant;
+  card2Variant: CardVariant;
+};
+
+// cardsElo.ts
+export type CardWithElo = {
+  id: number;
+  name: string;
+  maxLevel?: number;
+  iconUrls?: {
+    medium?: string;
+    evolutionMedium?: string;
+    heroMedium?: string;
+  };
+  elo: number;
+  ethicalScore: number;
+  matchups?: number;
+  hasEvo?: boolean;
+  hasHero?: boolean;
+};
+
+export type CardsWithEloResponse = {
+  items: CardWithElo[];
+};
+
+// clans.ts
+export type ClanMember = {
+  tag: string;
+  name: string;
+  role: string;
+  expLevel: number;
+  trophies: number;
+  arena?: {
+    id: number;
+    name?: string;
+  };
+  clanRank: number;
+  previousClanRank: number;
+  donations: number;
+  donationsReceived: number;
+};
+
+export type ClanMembersResponse = {
+  items: ClanMember[];
+};
+
+export type Clan = {
+  tag: string;
+  name: string;
+  type: string;
+  description?: string;
+  badgeId?: number;
+  clanScore?: number;
+  clanWarTrophies?: number;
+  location?: {
+    id: number;
+    name: string;
+    isCountry: boolean;
+    countryCode?: string;
+  };
+  requiredTrophies?: number;
+  donationsPerWeek?: number;
+  clanChestStatus?: string;
+  clanChestLevel?: number;
+  clanChestMaxLevel?: number;
+  members: number;
+  memberList?: ClanMember[];
+};
+
+export type ClanSearchResponse = {
+  items: Clan[];
 };
