@@ -396,9 +396,6 @@ export function buildOptimalDeck({
       continue;
     }
     for (const entry of heroCandidates) {
-      console.log(
-        `[DeckBuilder] hero slot ${slotIndex} evaluating ${entry.card.name} (lvl ${entry.level})`
-      );
       if (placedIds.has(entry.card.id)) {
         continue;
       }
@@ -411,23 +408,12 @@ export function buildOptimalDeck({
   const evoCandidates = normalizedCards
     .filter((entry) => entry.hasEvolution)
     .sort(sortBySpecialPriority);
-  console.log(
-    "[DeckBuilder] evolution candidates",
-    evoCandidates.map((entry) => ({
-      name: entry.card.name,
-      level: entry.level,
-      evolutionLevel: (entry.card as { evolutionLevel?: number }).evolutionLevel,
-    }))
-  );
 
   for (const slotIndex of evoSlots) {
     if (slots[slotIndex]) {
       continue;
     }
     for (const entry of evoCandidates) {
-      console.log(
-        `[DeckBuilder] evolution slot ${slotIndex} evaluating ${entry.card.name} (lvl ${entry.level})`
-      );
       if (placedIds.has(entry.card.id)) {
         continue;
       }
@@ -436,11 +422,6 @@ export function buildOptimalDeck({
       break;
     }
   }
-
-  console.log("[DeckBuilder] special slots filled", {
-    evoSlotsFilled: evoSlots.filter((slot) => Boolean(slots[slot])).length,
-    heroSlotsFilled: heroSlots.filter((slot) => Boolean(slots[slot])).length,
-  });
 
   const specialSlots = [...evoSlots, ...heroSlots];
   const allSlots = Array.from({ length: 8 }, (_, index) => index);
@@ -528,11 +509,6 @@ export function buildOptimalDeck({
       return;
     }
     const candidate = pickCandidate(group);
-    console.log("[DeckBuilder] ensureGroup", {
-      groupSize: group.size,
-      existingCount,
-      candidate: candidate?.card.name ?? null,
-    });
     if (candidate) {
       placeInBaseSlot(candidate.card);
     }
@@ -547,25 +523,8 @@ export function buildOptimalDeck({
 
   const ensureCount = (group: Set<string>, desired: number) => {
     let count = countInGroup(group);
-    if (group === STRUCTURES) {
-      console.log("[DeckBuilder] ensureCount STRUCTURES start", {
-        desired,
-        existingCount: count,
-        openBaseSlots: baseSlots.filter((slot) => !slots[slot]),
-        currentStructureCards: slots
-          .filter((card): card is PlayerCard => Boolean(card))
-          .filter((card) => STRUCTURES.has(card.name.toLowerCase()))
-          .map((card) => card.name),
-      });
-    }
     while (count < desired) {
       const candidate = pickCandidate(group);
-      if (group === STRUCTURES) {
-        console.log("[DeckBuilder] STRUCTURES candidate", {
-          candidate: candidate?.card.name ?? null,
-          level: candidate?.level ?? null,
-        });
-      }
       if (!candidate) {
         break;
       }
@@ -573,15 +532,6 @@ export function buildOptimalDeck({
         break;
       }
       count += 1;
-    }
-    if (group === STRUCTURES) {
-      console.log("[DeckBuilder] ensureCount STRUCTURES end", {
-        finalCount: countInGroup(group),
-        finalStructureCards: slots
-          .filter((card): card is PlayerCard => Boolean(card))
-          .filter((card) => STRUCTURES.has(card.name.toLowerCase()))
-          .map((card) => card.name),
-      });
     }
   };
 
@@ -650,19 +600,16 @@ export function buildOptimalDeck({
   };
 
   if (winConType === "defense" || winConType === "secondary") {
-    console.log("[DeckBuilder] winConType constraints", winConType);
     ensureCount(MINI_TANK, 1);
     ensureCount(CYCLE, 2);
     ensureCount(STRUCTURES, 1);
     forceInsertGroup(STRUCTURES, "STRUCTURES");
   } else if (winConType === "offense") {
-    console.log("[DeckBuilder] winConType constraints", winConType);
     ensureCount(MINI_TANK, 1);
     ensureCount(CYCLE, 1);
     ensureCount(STRUCTURES, 1);
     forceInsertGroup(STRUCTURES, "STRUCTURES");
   } else if (winConType === "beatdown") {
-    console.log("[DeckBuilder] winConType constraints", winConType);
     ensureCount(SUPPORT, 2);
   }
 

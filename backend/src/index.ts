@@ -20,6 +20,8 @@ const envCorsOrigins = (process.env.CORS_ORIGIN ?? "")
   .filter(Boolean);
 const allowedCorsOrigins = new Set([...DEFAULT_CORS_ORIGINS, ...envCorsOrigins]);
 const allowAnyCorsOrigin = allowedCorsOrigins.has("*");
+const isCardVariant = (value: unknown): value is "base" | "evo" | "hero" =>
+  value === "base" || value === "evo" || value === "hero";
 
 // connect with our local frontend
 const app = express();
@@ -73,22 +75,6 @@ process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 // health check
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
-// GET /api/db/status - Check MongoDB connection status
-app.get("/api/db/status", async (_req, res) => {
-  try {
-    const isConnected = isDatabaseConnected();
-    const status = await getConnectionStatus();
-    return res.json({
-      connected: isConnected,
-      ...status,
-    });
-  } catch (e: any) {
-    res.status(500).json({
-      connected: false,
-      error: e?.message ?? String(e),
-    });
-  }
-});
 
 // GET /api/players/scan?playerName=<name>&clanName=<clanName>
 app.get("/api/players/scan", async (req, res) => {
@@ -221,23 +207,38 @@ app.post("/api/vote", async (req, res) => {
     if (typeof voteRequest.card1Id !== "number" || typeof voteRequest.card2Id !== "number") {
       return res.status(400).send("card1Id and card2Id are required numbers");
     }
+    if (voteRequest.card1Id === voteRequest.card2Id) {
+      return res.status(400).send("card1Id and card2Id must be different");
+    }
     if (!voteRequest.card1Variant || !voteRequest.card2Variant) {
       return res.status(400).send("card1Variant and card2Variant are required");
     }
-    if (!["base", "evo", "hero"].includes(voteRequest.card1Variant) || 
-        !["base", "evo", "hero"].includes(voteRequest.card2Variant)) {
+    if (!isCardVariant(voteRequest.card1Variant) || !isCardVariant(voteRequest.card2Variant)) {
       return res.status(400).send("card1Variant and card2Variant must be 'base', 'evo', or 'hero'");
     }
-    if (voteRequest.winnerCardId !== null && typeof voteRequest.winnerCardId !== "number") {
-      return res.status(400).send("winnerCardId must be a number or null");
-    }
-    if (voteRequest.winnerCardId !== null && !voteRequest.winnerVariant) {
-      return res.status(400).send("winnerVariant is required when winnerCardId is not null");
-    }
-    if (voteRequest.winnerCardId !== null && 
-        voteRequest.winnerCardId !== voteRequest.card1Id && 
-        voteRequest.winnerCardId !== voteRequest.card2Id) {
-      return res.status(400).send("winnerCardId must match card1Id or card2Id");
+    if (voteRequest.winnerCardId === null) {
+      if (voteRequest.winnerVariant != null) {
+        return res.status(400).send("winnerVariant must be omitted when winnerCardId is null");
+      }
+    } else {
+      if (typeof voteRequest.winnerCardId !== "number") {
+        return res.status(400).send("winnerCardId must be a number or null");
+      }
+      if (voteRequest.winnerVariant == null) {
+        return res.status(400).send("winnerVariant is required when winnerCardId is not null");
+      }
+      if (!isCardVariant(voteRequest.winnerVariant)) {
+        return res.status(400).send("winnerVariant must be 'base', 'evo', or 'hero'");
+      }
+      if (voteRequest.winnerCardId !== voteRequest.card1Id && 
+          voteRequest.winnerCardId !== voteRequest.card2Id) {
+        return res.status(400).send("winnerCardId must match card1Id or card2Id");
+      }
+      const expectedWinnerVariant =
+        voteRequest.winnerCardId === voteRequest.card1Id ? voteRequest.card1Variant : voteRequest.card2Variant;
+      if (voteRequest.winnerVariant !== expectedWinnerVariant) {
+        return res.status(400).send("winnerVariant must match the selected card's variant");
+      }
     }
 
     const voteResponse = await processVote(voteRequest);

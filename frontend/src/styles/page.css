@@ -88,6 +88,23 @@
   border-color: rgba(77, 155, 255, 0.7);
 }
 
+.page__link--primary {
+  padding: 12px 18px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(120deg, var(--accent), var(--accent-strong));
+  color: #0b0a1f;
+  font-weight: 600;
+  font-size: 1rem;
+  box-shadow: 0 14px 30px rgba(10, 22, 122, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.page__link--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 34px rgba(10, 22, 122, 0.3);
+}
+
 .page__player {
   padding: 12px 14px;
   border-radius: 16px;

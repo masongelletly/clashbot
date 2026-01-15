@@ -69,11 +69,10 @@ export async function connectToDatabase(): Promise<Db> {
   }
 
   try {
-    // Configure connection pool to prevent connection bloat
     client = new MongoClient(uri, {
-      maxPoolSize: 10,        // Maximum 10 connections in the pool
-      minPoolSize: 1,         // Keep at least 1 connection alive
-      maxIdleTimeMS: 30000,   // Close idle connections after 30 seconds
+      maxPoolSize: 15,
+      minPoolSize: 1,
+      maxIdleTimeMS: 30000,
     });
     await client.connect();
     db = client.db(dbName);

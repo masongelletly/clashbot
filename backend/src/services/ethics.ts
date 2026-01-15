@@ -4,6 +4,8 @@ import { eloToEthicalScore, getInitialElo } from "./elo.js";
 import { batchGetCardElosAndMatchups } from "./dbCards.js";
 import type { CardVariant } from "./cardElo.js";
 
+type DeckCard = NonNullable<CRTypes.PlayerProfileResponse["currentDeck"]>[number];
+
 /**
  * Calculate ethics score for a player based on their current deck
  */
@@ -36,7 +38,7 @@ export async function calculateEthicsScore(
   // Step 1: Determine variants needed for all cards in deck
   const cardVariantsToFetch: Array<{ cardId: number; variant: CardVariant }> = [];
   const slotInfo: Array<{
-    card: CRTypes.Card;
+    card: DeckCard;
     index: number;
     showEvo: boolean;
     showHero: boolean;
