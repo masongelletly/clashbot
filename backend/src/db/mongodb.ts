@@ -48,6 +48,14 @@ export interface CardDocument {
   cardname: string;
   elo: number;
   matchups: number;
+  wins: number;
+  losses: number;
+  history: Array<{
+    opponentCardId: number;
+    opponentVariant: "base" | "evo" | "hero";
+    result: "win" | "loss";
+    at: string;
+  }>;
 }
 
 /**
@@ -104,4 +112,3 @@ export async function closeDatabase(): Promise<void> {
     console.log("Disconnected from MongoDB");
   }
 }
-

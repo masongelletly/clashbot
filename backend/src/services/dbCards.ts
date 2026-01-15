@@ -2,6 +2,8 @@ import { getCardsCollection, type CardDocument } from "../db/mongodb.js";
 import { getInitialElo } from "./elo.js";
 import type { CardVariant } from "./cardElo.js";
 
+type MatchResult = "win" | "loss";
+
 /**
  * Get a card's ELO rating from the database
  */
@@ -84,6 +86,9 @@ export async function incrementMatchups(
           variant,
           elo: getInitialElo(),
           cardname: cardName || `Card ${cardId}`,
+          wins: 0,
+          losses: 0,
+          history: [],
           // Don't set matchups here - $inc will handle it
         },
         $inc: { matchups: 1 },
@@ -111,11 +116,63 @@ export async function resetCardElo(
         $set: {
           elo: getInitialElo(),
           matchups: 0,
+          wins: 0,
+          losses: 0,
+          history: [],
         },
       }
     );
   } catch (error) {
     console.error(`Error resetting ELO for card ${cardId} (${variant}):`, error);
+    throw error;
+  }
+}
+
+/**
+ * Record a match result and update ELO, matchups, wins/losses, and history
+ */
+export async function recordMatchResult(
+  cardId: number,
+  variant: CardVariant,
+  elo: number,
+  result: MatchResult,
+  opponentCardId: number,
+  opponentVariant: CardVariant,
+  cardName?: string
+): Promise<void> {
+  try {
+    const collection = await getCardsCollection();
+    const day = new Date().toISOString().slice(0, 10);
+    await collection.updateOne(
+      { cardId, variant },
+      {
+        $set: {
+          cardId,
+          variant,
+          elo,
+          cardname: cardName || `Card ${cardId}`,
+        },
+        $inc: {
+          matchups: 1,
+          wins: result === "win" ? 1 : 0,
+          losses: result === "loss" ? 1 : 0,
+        },
+        $push: {
+          history: {
+            opponentCardId,
+            opponentVariant,
+            result,
+            at: day,
+          },
+        },
+      },
+      { upsert: true }
+    );
+  } catch (error) {
+    console.error(
+      `Error recording match result for card ${cardId} (${variant}):`,
+      error
+    );
     throw error;
   }
 }
@@ -222,4 +279,3 @@ export async function batchGetCardElosAndMatchups(
     return { eloMap: new Map(), matchupsMap: new Map() };
   }
 }
-

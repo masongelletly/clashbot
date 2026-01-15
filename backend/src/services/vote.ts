@@ -6,9 +6,9 @@ import {
   calculateEloChange,
 } from "./elo.js";
 import {
-  updateCardElo,
   incrementMatchups,
   batchGetCardElosAndMatchups,
+  recordMatchResult,
 } from "./dbCards.js";
 
 // Cache for all cards (including evo/hero variants)
@@ -165,14 +165,26 @@ export async function processVote(
     const winnerElo = getElo(winnerId, winnerVar);
     const winnerVotes = getMatchups(winnerId, winnerVar);
     const newWinnerElo = updateElo(winnerElo, true, winnerVotes);
-    await updateCardElo(winnerId, winnerVar, newWinnerElo);
-    await incrementMatchups(winnerId, winnerVar);
+    await recordMatchResult(
+      winnerId,
+      winnerVar,
+      newWinnerElo,
+      "win",
+      loserId,
+      loserVar
+    );
 
     const loserElo = getElo(loserId, loserVar);
     const loserVotes = getMatchups(loserId, loserVar);
     const newLoserElo = updateElo(loserElo, false, loserVotes);
-    await updateCardElo(loserId, loserVar, newLoserElo);
-    await incrementMatchups(loserId, loserVar);
+    await recordMatchResult(
+      loserId,
+      loserVar,
+      newLoserElo,
+      "loss",
+      winnerId,
+      winnerVar
+    );
 
     const winnerEloChange = calculateEloChange(winnerVotes);
     const loserEloChange = calculateEloChange(loserVotes);
