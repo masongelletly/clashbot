@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import ActivePlayerBadge from "../../components/ActivePlayerBadge/ActivePlayerBadge";
 import { getRandomCards, submitVote } from "../../api/vote";
 import "./Vote.css";
 
@@ -35,6 +34,9 @@ export default function Vote() {
     }
     return card.iconUrls?.medium;
   };
+
+  const card1IconUrl = card1 ? getCardIconUrl(card1, card1Variant) : undefined;
+  const card2IconUrl = card2 ? getCardIconUrl(card2, card2Variant) : undefined;
 
   // Load random cards on mount and after vote
   const loadCards = async () => {
@@ -98,7 +100,14 @@ export default function Vote() {
     }
 
     try {
-      await submitVote(card1.id, card1Variant, card2.id, card2Variant, winnerCardId, winnerVariant);
+      await submitVote({
+        card1Id: card1.id,
+        card1Variant,
+        card2Id: card2.id,
+        card2Variant,
+        winnerCardId,
+        winnerVariant,
+      });
       // Small delay to let animations play before loading new cards
       setTimeout(async () => {
         await loadCards();
@@ -116,57 +125,49 @@ export default function Vote() {
       <div className="page__layout">
         <header className="page__header">
           <div>
-            <span className="page__eyebrow">Card comparison</span>
+            <span className="page__eyebrow">Ethics Voting</span>
             <h1 className="page__title">Vote</h1>
-            <p className="page__subtitle">
-              Which card is more ethical to use? To view a card's ethical score, click on the card in the Cards page above!
-            </p>
           </div>
           <div className="page__header-actions">
-            <ActivePlayerBadge />
-            <Link className="page__link" to="/cards">
+            <Link className="page__link page__link--primary" to="/cards">
               View All Cards
             </Link>
-            <Link className="page__link" to="/">
+            <Link className="page__link page__link--primary" to="/">
               Back to home
             </Link>
           </div>
         </header>
 
         {loading && !card1 && !card2 ? (
-          <section className="page__card vote__card">
+          <div className="vote__status">
             <div className="vote__loading">Loading cards...</div>
-          </section>
+          </div>
         ) : error ? (
-          <section className="page__card vote__card">
+          <div className="vote__status">
             <div className="vote__error">Error: {error}</div>
-          </section>
+          </div>
         ) : card1 && card2 ? (
-          <section className="page__card vote__card">
-            <div className="vote__container">
-              <div className="vote__cards">
-                {/* Card 1 */}
-                <div className="vote__card-wrapper">
-                  <button
-                    className="vote__card-button"
-                    onClick={() => handleVote(card1.id)}
-                    disabled={voting || loading}
-                    aria-label={`Select ${card1.name}`}
-                  >
-                    <div className="vote__card-figure">
-                      {getCardIconUrl(card1, card1Variant) ? (
-                        <img
-                          className="vote__card-img"
-                          src={getCardIconUrl(card1, card1Variant)}
-                          alt={card1.name}
-                          loading="lazy"
-                        />
-                      ) : (
-                        <span className="vote__card-name">{card1.name}</span>
-                      )}
-                    </div>
-                    <div className="vote__card-label">{card1.name}</div>
-                  </button>
+          <div className="vote__container">
+            <div className="vote__prompt">Which Card is More Ethical?</div>
+            <div className="vote__cards">
+              {/* Card 1 */}
+              <div className="vote__card-wrapper">
+                <button
+                  className="vote__card-button"
+                  onClick={() => handleVote(card1.id)}
+                  disabled={voting || loading}
+                  aria-label={`Select ${card1.name}`}
+                >
+                  <div className="vote__card-figure">
+                    {card1IconUrl ? (
+                      <img
+                        className="vote__card-img"
+                        src={card1IconUrl}
+                        alt={card1.name}
+                        loading="lazy"
+                      />
+                    ) : null}
+                  </div>
                   {eloAnimations
                     .filter((anim) => anim.cardId === card1.id)
                     .map((anim) => (
@@ -179,33 +180,31 @@ export default function Vote() {
                         {anim.isPositive ? "+" : ""}{anim.value}
                       </div>
                     ))}
-                </div>
+                </button>
+                <div className="vote__card-label">{card1.name}</div>
+              </div>
 
-                {/* VS divider */}
-                <div className="vote__divider">VS</div>
+              {/* VS divider */}
+              <div className="vote__divider">VS</div>
 
-                {/* Card 2 */}
-                <div className="vote__card-wrapper">
-                  <button
-                    className="vote__card-button"
-                    onClick={() => handleVote(card2.id)}
-                    disabled={voting || loading}
-                    aria-label={`Select ${card2.name}`}
-                  >
-                    <div className="vote__card-figure">
-                      {getCardIconUrl(card2, card2Variant) ? (
-                        <img
-                          className="vote__card-img"
-                          src={getCardIconUrl(card2, card2Variant)}
-                          alt={card2.name}
-                          loading="lazy"
-                        />
-                      ) : (
-                        <span className="vote__card-name">{card2.name}</span>
-                      )}
-                    </div>
-                    <div className="vote__card-label">{card2.name}</div>
-                  </button>
+              {/* Card 2 */}
+              <div className="vote__card-wrapper">
+                <button
+                  className="vote__card-button"
+                  onClick={() => handleVote(card2.id)}
+                  disabled={voting || loading}
+                  aria-label={`Select ${card2.name}`}
+                >
+                  <div className="vote__card-figure">
+                    {card2IconUrl ? (
+                      <img
+                        className="vote__card-img"
+                        src={card2IconUrl}
+                        alt={card2.name}
+                        loading="lazy"
+                      />
+                    ) : null}
+                  </div>
                   {eloAnimations
                     .filter((anim) => anim.cardId === card2.id)
                     .map((anim) => (
@@ -218,22 +217,13 @@ export default function Vote() {
                         {anim.isPositive ? "+" : ""}{anim.value}
                       </div>
                     ))}
-                </div>
+                </button>
+                <div className="vote__card-label">{card2.name}</div>
               </div>
-
-              {/* Skip button */}
-              <button
-                className="vote__skip-button"
-                onClick={() => handleVote(null)}
-                disabled={voting || loading}
-              >
-                {voting ? "Submitting..." : "Skip (Neither)"}
-              </button>
             </div>
-          </section>
+          </div>
         ) : null}
       </div>
     </div>
   );
 }
-

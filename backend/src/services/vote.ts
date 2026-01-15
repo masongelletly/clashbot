@@ -4,12 +4,8 @@ import {
   getInitialElo,
   updateElo,
   calculateEloChange,
-  ELO_BASE_CHANGE,
 } from "./elo.js";
-import { getCardElo, type CardVariant } from "./cardElo.js";
 import {
-  getCardElo as getCardEloFromDb,
-  getCardMatchups,
   updateCardElo,
   incrementMatchups,
   batchGetCardElosAndMatchups,
@@ -48,10 +44,7 @@ async function getCachedCards(): Promise<CRTypes.Card[]> {
  * Randomly selects base, evo, or hero variants when available
  * Uses cached cards to avoid multiple API requests
  */
-export async function getRandomCards(): Promise<CRTypes.RandomCardsResponse & {
-  card1Variant: CRTypes.CardVariant;
-  card2Variant: CRTypes.CardVariant;
-}> {
+export async function getRandomCards(): Promise<CRTypes.RandomCardsResponse> {
   const cards = await getCachedCards();
 
   // Get two random distinct cards
@@ -108,9 +101,38 @@ export async function getRandomCards(): Promise<CRTypes.RandomCardsResponse & {
 export async function processVote(
   voteRequest: CRTypes.VoteRequest
 ): Promise<CRTypes.VoteResponse> {
-  const { card1Id, card1Variant, card2Id, card2Variant, winnerCardId, winnerVariant } = voteRequest;
+  const {
+    card1Id,
+    card1Variant,
+    card2Id,
+    card2Variant,
+    winnerCardId,
+    winnerVariant,
+  } = voteRequest;
+
+  if (card1Id === card2Id) {
+    throw new Error("card1Id and card2Id must be different");
+  }
+
+  if (winnerCardId === null) {
+    if (winnerVariant != null) {
+      throw new Error("winnerVariant must be omitted when winnerCardId is null");
+    }
+  } else {
+    if (winnerVariant == null) {
+      throw new Error("winnerVariant is required when winnerCardId is not null");
+    }
+    if (winnerCardId !== card1Id && winnerCardId !== card2Id) {
+      throw new Error("winnerCardId must match card1Id or card2Id");
+    }
+    const expectedWinnerVariant =
+      winnerCardId === card1Id ? card1Variant : card2Variant;
+    if (winnerVariant !== expectedWinnerVariant) {
+      throw new Error("winnerVariant must match the selected card's variant");
+    }
+  }
   
-  if (winnerCardId === null || !winnerVariant) {
+  if (winnerCardId === null) {
     // Neither card was selected - just increment matchup counts
     await incrementMatchups(card1Id, card1Variant);
     await incrementMatchups(card2Id, card2Variant);
@@ -118,7 +140,7 @@ export async function processVote(
   } else {
     // One card was selected as winner
     const winnerId = winnerCardId;
-    const winnerVar = winnerVariant;
+    const winnerVar = winnerId === card1Id ? card1Variant : card2Variant;
     const loserId = winnerId === card1Id ? card2Id : card1Id;
     const loserVar = winnerId === card1Id ? card2Variant : card1Variant;
 
@@ -129,12 +151,12 @@ export async function processVote(
     ]);
 
     // Helper to get values from maps
-    const getElo = (cardId: number, variant: CardVariant): number => {
+    const getElo = (cardId: number, variant: CRTypes.CardVariant): number => {
       const key = `${cardId}-${variant}`;
       return eloMap.get(key) ?? getInitialElo();
     };
 
-    const getMatchups = (cardId: number, variant: CardVariant): number => {
+    const getMatchups = (cardId: number, variant: CRTypes.CardVariant): number => {
       const key = `${cardId}-${variant}`;
       return matchupsMap.get(key) ?? 0;
     };

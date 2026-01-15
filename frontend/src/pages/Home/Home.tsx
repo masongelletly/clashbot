@@ -104,8 +104,8 @@ export default function Home() {
               </div>
             </div>
             <div className="home__vote-cta">
-              <Link className="home__primary-btn" to="/vote">
-                Help us improve our Ethics matrix, Vote Here
+              <Link className="home__primary-btn home__vote-btn" to="/vote">
+                Vote on Card Ethics
               </Link>
             </div>
           </div>

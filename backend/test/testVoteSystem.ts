@@ -1,19 +1,14 @@
-/**
- * Test Script for Vote System and Database Connection
- * Run with: tsx src/scripts/testVoteSystem.ts
- */
-
 import "dotenv/config";
-import { connectToDatabase, closeDatabase } from "../db/mongodb.js";
+import { connectToDatabase, closeDatabase } from "../src/db/mongodb.js";
 import {
   getCardElo,
   updateCardElo,
   incrementMatchups,
   getCardMatchups,
   resetCardElo,
-} from "../services/dbCards.js";
-import { updateElo, calculateEloChange, getInitialElo } from "../services/elo.js";
-import type { CardVariant } from "../services/cardElo.js";
+} from "../src/services/dbCards.js";
+import { updateElo, calculateEloChange, getInitialElo } from "../src/services/elo.js";
+import type { CardVariant } from "../src/services/cardElo.js";
 
 // Test card IDs (using real Clash Royale card IDs for testing)
 const TEST_CARDS = [
@@ -91,10 +86,10 @@ async function performVote(
  * Reset all test cards to initial state
  */
 async function resetTestCards(): Promise<void> {
-  console.log("\n📋 Resetting test cards to initial state (ELO=1500, Matchups=0)...");
+  console.log("\nResetting test cards to initial state (ELO=1500, Matchups=0)...");
   for (const card of TEST_CARDS) {
     await resetCardElo(card.id, card.variant);
-    console.log(`  ✓ Reset ${card.name} (${card.variant})`);
+    console.log(`Reset ${card.name} (${card.variant})`);
   }
 }
 
@@ -102,16 +97,16 @@ async function resetTestCards(): Promise<void> {
  * Main test function
  */
 async function runTest(): Promise<void> {
-  console.log("🧪 Starting Vote System Test\n");
+  console.log("Starting Vote System Test\n");
 
   try {
     // Step 1: Test database connection
-    console.log("1️⃣  Testing database connection...");
+    console.log("Testing database connection...");
     await connectToDatabase();
-    console.log("  ✓ Database connection successful\n");
+    console.log("Database connection successful\n");
 
     // Step 2: Display initial state
-    console.log("2️⃣  Initial card states:");
+    console.log("Initial card states:");
     for (const card of TEST_CARDS) {
       await displayCardState(card.id, card.variant, card.name);
     }
@@ -169,7 +164,7 @@ async function runTest(): Promise<void> {
     console.log();
 
     // Step 4: Display final state
-    console.log("4️⃣  Final card states after votes:");
+    console.log("Final card states after votes:");
     for (const card of TEST_CARDS) {
       await displayCardState(card.id, card.variant, card.name);
     }
@@ -180,15 +175,15 @@ async function runTest(): Promise<void> {
     console.log();
 
     // Step 6: Verify reset
-    console.log("5️⃣  Verifying reset (all cards should be ELO=1500, Matchups=0):");
+    console.log("Verifying reset (all cards should be ELO=1500, Matchups=0):");
     for (const card of TEST_CARDS) {
       await displayCardState(card.id, card.variant, card.name);
     }
     console.log();
 
-    console.log("✅ Test completed successfully!");
+    console.log("Test completed successfully!");
   } catch (error) {
-    console.error("❌ Test failed:", error);
+    console.error("Test failed:", error);
     throw error;
   } finally {
     // Cleanup: Close database connection

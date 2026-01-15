@@ -1,6 +1,33 @@
 import type * as CRTypes from "../../../shared/types/cr-api-types";
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:3001";
+const API_BASE = (import.meta.env.VITE_API_BASE ?? "http://localhost:3001").replace(/\/+$/, "");
+
+function assertValidVoteRequest(voteRequest: CRTypes.VoteRequest): void {
+  if (voteRequest.card1Id === voteRequest.card2Id) {
+    throw new Error("card1Id and card2Id must be different");
+  }
+
+  if (voteRequest.winnerCardId === null) {
+    if (voteRequest.winnerVariant != null) {
+      throw new Error("winnerVariant must be omitted when winnerCardId is null");
+    }
+    return;
+  }
+
+  if (voteRequest.winnerVariant == null) {
+    throw new Error("winnerVariant is required when winnerCardId is not null");
+  }
+
+  if (voteRequest.winnerCardId !== voteRequest.card1Id && voteRequest.winnerCardId !== voteRequest.card2Id) {
+    throw new Error("winnerCardId must match card1Id or card2Id");
+  }
+
+  const expectedVariant =
+    voteRequest.winnerCardId === voteRequest.card1Id ? voteRequest.card1Variant : voteRequest.card2Variant;
+  if (voteRequest.winnerVariant !== expectedVariant) {
+    throw new Error("winnerVariant must match the selected card's variant");
+  }
+}
 
 /**
  * Get two random cards for voting
@@ -18,34 +45,18 @@ export async function getRandomCards(): Promise<CRTypes.RandomCardsResponse> {
 
 /**
  * Submit a vote between two cards
- * @param card1Id - ID of the first card
- * @param card1Variant - Variant of the first card ("base", "evo", or "hero")
- * @param card2Id - ID of the second card
- * @param card2Variant - Variant of the second card ("base", "evo", or "hero")
- * @param winnerCardId - ID of the winning card, or null if neither was selected
- * @param winnerVariant - Variant of the winning card (required if winnerCardId is not null)
+ * @param voteRequest - Vote payload with card IDs/variants and the winner (or skip)
  */
 export async function submitVote(
-  card1Id: number,
-  card1Variant: CRTypes.CardVariant,
-  card2Id: number,
-  card2Variant: CRTypes.CardVariant,
-  winnerCardId: number | null,
-  winnerVariant?: CRTypes.CardVariant
+  voteRequest: CRTypes.VoteRequest
 ): Promise<CRTypes.VoteResponse> {
+  assertValidVoteRequest(voteRequest);
   const res = await fetch(`${API_BASE}/api/vote`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      card1Id,
-      card1Variant,
-      card2Id,
-      card2Variant,
-      winnerCardId,
-      winnerVariant,
-    }),
+    body: JSON.stringify(voteRequest),
   });
 
   if (!res.ok) {
@@ -55,4 +66,3 @@ export async function submitVote(
 
   return (await res.json()) as CRTypes.VoteResponse;
 }
-
