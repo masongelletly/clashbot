@@ -172,6 +172,8 @@ export type VoteRequest = {
 export type VoteResponse = {
   success: boolean;
   message?: string;
+  winnerEloChange?: number; // ELO change for the winner (only present if there was a winner)
+  loserEloChange?: number;   // ELO change for the loser (only present if there was a winner)
 };
 
 export type RandomCardsResponse = {

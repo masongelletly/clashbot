@@ -6,7 +6,6 @@ import "./Vote.css";
 
 import type * as CRTypes from "../../../../shared/types/cr-api-types";
 
-const ELO_CHANGE = 32; // Should match backend ELO_BASE_CHANGE (reduces over time)
 
 type EloAnimation = {
   id: string;
@@ -69,36 +68,38 @@ export default function Vote() {
     const winnerVariant = winnerCardId === card1.id ? card1Variant : 
                           winnerCardId === card2.id ? card2Variant : undefined;
 
-    // Show ELO animations
-    if (winnerCardId !== null) {
-      const winnerId = winnerCardId;
-      const loserId = winnerId === card1.id ? card2.id : card1.id;
-      
-      const newAnimations: EloAnimation[] = [
-        {
-          id: `winner-${Date.now()}-${Math.random()}`,
-          cardId: winnerId,
-          value: ELO_CHANGE,
-          isPositive: true,
-        },
-        {
-          id: `loser-${Date.now()}-${Math.random()}`,
-          cardId: loserId,
-          value: -ELO_CHANGE,
-          isPositive: false,
-        },
-      ];
-      
-      setEloAnimations(newAnimations);
-      
-      // Remove animations after they finish
-      setTimeout(() => {
-        setEloAnimations([]);
-      }, 2000);
-    }
-
     try {
-      await submitVote(card1.id, card1Variant, card2.id, card2Variant, winnerCardId, winnerVariant);
+      // Submit vote and get actual ELO changes from backend
+      const response = await submitVote(card1.id, card1Variant, card2.id, card2Variant, winnerCardId, winnerVariant);
+      
+      // Show ELO animations with actual values from backend
+      if (winnerCardId !== null && response.winnerEloChange !== undefined && response.loserEloChange !== undefined) {
+        const winnerId = winnerCardId;
+        const loserId = winnerId === card1.id ? card2.id : card1.id;
+        
+        const newAnimations: EloAnimation[] = [
+          {
+            id: `winner-${Date.now()}-${Math.random()}`,
+            cardId: winnerId,
+            value: Math.round(response.winnerEloChange), // Round to whole number for display
+            isPositive: true,
+          },
+          {
+            id: `loser-${Date.now()}-${Math.random()}`,
+            cardId: loserId,
+            value: Math.round(response.loserEloChange), // Round to whole number for display
+            isPositive: false,
+          },
+        ];
+        
+        setEloAnimations(newAnimations);
+        
+        // Remove animations after they finish
+        setTimeout(() => {
+          setEloAnimations([]);
+        }, 2000);
+      }
+      
       // Small delay to let animations play before loading new cards
       setTimeout(async () => {
         await loadCards();
