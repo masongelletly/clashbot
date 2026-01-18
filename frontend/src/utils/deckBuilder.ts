@@ -293,6 +293,10 @@ const isHeroCard = (card: PlayerCard) => {
   const evoLevel = (card as { evolutionLevel?: number }).evolutionLevel;
   return evoLevel === 2 || evoLevel === 3;
 };
+const isEvolutionCard = (card: PlayerCard) => {
+  const evoLevel = (card as { evolutionLevel?: number }).evolutionLevel;
+  return evoLevel === 1 || evoLevel === 3;
+};
 
 const rearrangeHeroSlots = (
   slots: Array<PlayerCard | null>,
@@ -325,6 +329,52 @@ const rearrangeHeroSlots = (
     slots[candidateIndex] = slotCard ?? null;
     slots[slotIndex] = candidateCard ?? null;
   }
+};
+
+const rearrangeEvoSlots = (
+  slots: Array<PlayerCard | null>,
+  evoSlots: number[],
+  heroSlots: number[]
+) => {
+  if (evoSlots.length === 0) {
+    return;
+  }
+  const evoSlotSet = new Set(evoSlots);
+  const heroSlotsAvailable = heroSlots.length > 0;
+  const canUseEvoCard = (card: PlayerCard) =>
+    isEvolutionCard(card) && (!heroSlotsAvailable || !isHeroCard(card));
+  const canKeepEvoSlotCard = (card: PlayerCard | null) =>
+    card ? canUseEvoCard(card) : false;
+  const findEvoCandidateIndex = () =>
+    slots.findIndex((card, index) => {
+      if (!card || evoSlotSet.has(index)) {
+        return false;
+      }
+      return canUseEvoCard(card);
+    });
+
+  for (const slotIndex of evoSlots) {
+    const slotCard = slots[slotIndex];
+    if (canKeepEvoSlotCard(slotCard)) {
+      continue;
+    }
+    const candidateIndex = findEvoCandidateIndex();
+    if (candidateIndex === -1) {
+      break;
+    }
+    const candidateCard = slots[candidateIndex];
+    slots[candidateIndex] = slotCard ?? null;
+    slots[slotIndex] = candidateCard ?? null;
+  }
+};
+
+const rearrangeSpecialSlots = (
+  slots: Array<PlayerCard | null>,
+  evoSlots: number[],
+  heroSlots: number[]
+) => {
+  rearrangeHeroSlots(slots, heroSlots);
+  rearrangeEvoSlots(slots, evoSlots, heroSlots);
 };
 
 const getWinConditionPreferenceGroups = (
@@ -979,6 +1029,8 @@ const mapWinConditionType = (
 
 const buildBalancedWarDecks = (input: BuildDeckInput): DeckOption[] => {
   // Balance power by drafting all four decks together, prioritizing core roles.
+  const evoSlotCount = input.trophies > 3000 ? 2 : 1;
+  const evoSlots = evoSlotCount === 2 ? [0, 1] : [0];
   const heroSlotCount = input.trophies > 10000 ? 2 : input.trophies > 5000 ? 1 : 0;
   const heroSlots = heroSlotCount === 2 ? [2, 3] : heroSlotCount === 1 ? [2] : [];
   const heroSlotSet = new Set(heroSlots);
@@ -1149,7 +1201,7 @@ const buildBalancedWarDecks = (input: BuildDeckInput): DeckOption[] => {
       }
       deckSlots[slotIndex] = remainingCards.shift() ?? null;
     }
-    rearrangeHeroSlots(deckSlots, heroSlots);
+    rearrangeSpecialSlots(deckSlots, evoSlots, heroSlots);
     const winConditionType = mapWinConditionType(
       inferWinConditionType(deck.cards)
     );
