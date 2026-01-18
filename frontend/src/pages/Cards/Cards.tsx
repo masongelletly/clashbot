@@ -5,16 +5,38 @@ import "./Cards.css";
 
 import type * as CRTypes from "../../../../shared/types/cr-api-types";
 
+const getCardKey = (card: CRTypes.CardWithElo) => `${card.id}-${card.name}`;
+
 export default function Cards() {
   const [cards, setCards] = useState<CRTypes.CardWithElo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const isSearching = search.trim().length > 0;
-  const sortedCards = useMemo(
-    () => [...cards].sort((a, b) => b.elo - a.elo),
-    [cards]
-  );
+  const [isInverted, setIsInverted] = useState(false);
+  const baseSortedCards = useMemo(() => {
+    return [...cards].sort((a, b) => {
+      const ethicsDiff = b.ethicalScore - a.ethicalScore;
+      if (ethicsDiff !== 0) {
+        return ethicsDiff;
+      }
+      const nameDiff = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+      if (nameDiff !== 0) {
+        return nameDiff;
+      }
+      return a.id - b.id;
+    });
+  }, [cards]);
+  const sortedCards = useMemo(() => {
+    if (!isInverted) {
+      return baseSortedCards;
+    }
+    return [...baseSortedCards].reverse();
+  }, [baseSortedCards, isInverted]);
+  const rankLookup = useMemo(() => {
+    return new Map(
+      baseSortedCards.map((card, index) => [getCardKey(card), index + 1])
+    );
+  }, [baseSortedCards]);
   const filteredCards = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
     if (!normalizedSearch) {
@@ -64,6 +86,14 @@ export default function Cards() {
         </header>
 
         <div className="cards__search">
+          <button
+            className={`cards__sort-toggle${isInverted ? " is-active" : ""}`}
+            type="button"
+            onClick={() => setIsInverted((prev) => !prev)}
+            aria-pressed={isInverted}
+          >
+            Inverse order
+          </button>
           <input
             className="cards__search-input"
             type="search"
@@ -83,9 +113,9 @@ export default function Cards() {
             <div className="cards__error">Error: {error}</div>
           </section>
         ) : (
-          <section className={`cards__table${isSearching ? " cards__table--searching" : ""}`}>
+          <section className="cards__table">
             <div className="cards__table-header">
-              {!isSearching && <div className="cards__col cards__col--rank">#</div>}
+              <div className="cards__col cards__col--rank">#</div>
               <div className="cards__col cards__col--card">Card</div>
               <div className="cards__col cards__col--elo">ELO</div>
               <div className="cards__col cards__col--ethics">Ethics</div>
@@ -101,14 +131,14 @@ export default function Cards() {
                       : card.ethicalScore < 0
                         ? "cards__metric cards__metric--negative"
                         : "cards__metric cards__metric--neutral";
+                  const rowKey = getCardKey(card);
+                  const rankValue = rankLookup.get(rowKey) ?? index + 1;
 
                   return (
-                    <div key={`${card.id}-${card.name}`} className="cards__row">
-                      {!isSearching && (
-                        <div className="cards__cell cards__cell--rank" data-label="Rank">
-                          {index + 1}
-                        </div>
-                      )}
+                    <div key={rowKey} className="cards__row">
+                      <div className="cards__cell cards__cell--rank" data-label="Rank">
+                        {rankValue}
+                      </div>
                       <div className="cards__cell cards__cell--card" data-label="Card">
                         <div className="cards__card-media">
                           <div className="cards__card-figure">

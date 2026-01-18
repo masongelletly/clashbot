@@ -1,13 +1,16 @@
 import "dotenv/config";
 import express from "express";
+import type { Request } from "express";
 import cors from "cors";
 
 import { scanClanForPlayer } from "./services/clans.js";
 import { getPlayerDetails } from "./services/players.js";
 import { calculateEthicsScore } from "./services/ethics.js";
+import { generateClashbotOverview } from "./services/clashbot.js";
 import { getRandomCards, processVote } from "./services/vote.js";
 import { getAllCardsWithElo } from "./services/cards-elo.js";
 import { closeDatabase, getConnectionStatus, isDatabaseConnected } from "./db/mongodb.js";
+import type * as CRTypes from "../../shared/types/cr-api-types";
 
 const BASE_URL = "https://api.clashroyale.com/v1";
 const apiKey = process.env.CLASH_ROYALE_API_KEY;
@@ -21,6 +24,33 @@ const allowedCorsOrigins = new Set([...DEFAULT_CORS_ORIGINS, ...envCorsOrigins])
 const allowAnyCorsOrigin = allowedCorsOrigins.has("*");
 const isCardVariant = (value: unknown): value is "base" | "evo" | "hero" =>
   value === "base" || value === "evo" || value === "hero";
+
+const OVERVIEW_RATE_LIMIT_WINDOW_MS = 60_000;
+const OVERVIEW_RATE_LIMIT_MAX = 6;
+const overviewRateLimit = new Map<string, { count: number; windowStart: number }>();
+
+const getClientIp = (req: Request): string =>
+  req.ip || req.socket.remoteAddress || "unknown";
+
+const checkOverviewRateLimit = (ip: string): { limited: boolean; retryAfterMs: number } => {
+  const now = Date.now();
+  const entry = overviewRateLimit.get(ip);
+
+  if (!entry || now - entry.windowStart >= OVERVIEW_RATE_LIMIT_WINDOW_MS) {
+    overviewRateLimit.set(ip, { count: 1, windowStart: now });
+    return { limited: false, retryAfterMs: 0 };
+  }
+
+  if (entry.count >= OVERVIEW_RATE_LIMIT_MAX) {
+    return {
+      limited: true,
+      retryAfterMs: entry.windowStart + OVERVIEW_RATE_LIMIT_WINDOW_MS - now,
+    };
+  }
+
+  entry.count += 1;
+  return { limited: false, retryAfterMs: 0 };
+};
 
 // connect with our local frontend
 const app = express();
@@ -102,6 +132,39 @@ app.get("/api/ethics", async (req, res) => {
 
     const ethicsResult = await calculateEthicsScore(playerTag);
     return res.json(ethicsResult);
+  } catch (e: any) {
+    res.status(400).send(e?.message ?? String(e));
+  }
+});
+
+// POST /api/ethics/overview
+app.post("/api/ethics/overview", async (req, res) => {
+  try {
+    const payload = req.body as Partial<CRTypes.EthicsOverviewRequest>;
+    if (!payload) {
+      return res.status(400).send("Request body is required");
+    }
+
+    const playerTag = typeof payload.playerTag === "string"
+      ? payload.playerTag.trim()
+      : "";
+    if (!playerTag) {
+      return res.status(400).send("playerTag is required");
+    }
+
+    const clientIp = getClientIp(req);
+    const rateLimit = checkOverviewRateLimit(clientIp);
+    if (rateLimit.limited) {
+      const retryAfterSeconds = Math.max(1, Math.ceil(rateLimit.retryAfterMs / 1000));
+      res.set("Retry-After", String(retryAfterSeconds));
+      return res
+        .status(429)
+        .send(`Rate limit exceeded. Try again in ${retryAfterSeconds}s.`);
+    }
+
+    const ethicsResult = await calculateEthicsScore(playerTag);
+    const overview = await generateClashbotOverview(ethicsResult);
+    return res.json(overview);
   } catch (e: any) {
     res.status(400).send(e?.message ?? String(e));
   }
