@@ -15,6 +15,17 @@ const MAX_OVERVIEW_CHARS = 220;
 const OVERVIEW_CACHE_TTL_MS = 5 * 60 * 1000;
 
 const overviewCache = new Map<string, { overview: string; expiresAt: number }>();
+const CULTURE_NOTES = [
+  "Yawning emotes are unethical.",
+  "Crying emotes are unethical.",
+  "Laughing emotes are unethical.",
+  "The pig shaking booty emote is unethical.",
+  "Emotes with humping insinuations are unethical.",
+  "Players blame matchup for their losses.",
+  "Players can be hardstuck in trophies or arena.",
+  "Players are generally toxic with emotes.",
+  "There's a joke that well-placed cards counter anything.",
+];
 
 function toDeckSnapshot(
   deckSlots: CRTypes.EthicsCalculationResult["deckSlots"]
@@ -47,7 +58,7 @@ function buildFallbackOverview(
   deckSnapshot: DeckSnapshot[],
   featuredCard: DeckSnapshot | null
 ): string {
-  const playerName = input.playerName?.trim() || "Player";
+  const playerName = "Player";
   const featuredName = featuredCard?.name;
   const deckNames = deckSnapshot.map((card) => card.name).filter(Boolean);
   const deckCallout = featuredName
@@ -102,6 +113,28 @@ function buildCacheKey(
   });
 }
 
+function hashString(value: string): number {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+function pickCultureNotes(seed: string, count: number): string[] {
+  if (CULTURE_NOTES.length === 0 || count <= 0) {
+    return [];
+  }
+  const selected: string[] = [];
+  let cursor = hashString(seed);
+  for (let i = 0; i < Math.min(count, CULTURE_NOTES.length); i += 1) {
+    const index = cursor % CULTURE_NOTES.length;
+    selected.push(CULTURE_NOTES[index]);
+    cursor = hashString(`${cursor}-${i}`);
+  }
+  return Array.from(new Set(selected));
+}
+
 function getCachedOverview(key: string): string | null {
   const cached = overviewCache.get(key);
   if (!cached) {
@@ -142,6 +175,7 @@ export async function generateClashbotOverview(
   if (cachedOverview) {
     return { overview: cachedOverview };
   }
+  const cultureNotes = pickCultureNotes(cacheKey, 2);
   const fallback = buildFallbackOverview(
     { ...input, playerName, donations, donationsReceived },
     deckSnapshot,
@@ -155,11 +189,7 @@ export async function generateClashbotOverview(
   }
 
   const model = process.env.OPENAI_MODEL ?? DEFAULT_MODEL;
-  const deckNames = deckSnapshot.map((card) => card.name).join(", ") || "None";
-  const featuredName = featuredCard?.name ?? "None";
-  const featuredWeight = featuredCard?.weight ?? "N/A";
-  const featuredVariant = featuredCard?.variant ?? "N/A";
-  const featuredLevel = featuredCard?.level ?? "N/A";
+  const cultureNotesText = cultureNotes.length > 0 ? cultureNotes.join(" ") : "None.";
 
   try {
     const response = await fetch(OPENAI_API_URL, {
@@ -176,11 +206,11 @@ export async function generateClashbotOverview(
           {
             role: "system",
             content:
-              "You are Clashbot, a rowdy, witty announcer inside a Clash Royale ethics dashboard. Write one comedic sentence (under 25 words) that references the player's deck and ethics scores. Use the Featured Card provided (do not pick a different card). If the overall ethics score is above 0, praise them; if below 0, roast them with your words; if neutral, give them some attitude that goes both ways. Mention exactly one card name, use no emojis, and do not curse.",
+              "You are Clashbot, a rowdy, personable clan-chat announcer inside a Clash Royale ethics dashboard. Write one punchy comedic sentence (under 25 words) that references the player's deck plus their deck score and donation score. You may mention a card name if it helps the joke, but it is optional. If the combined vibe is positive, praise them; if negative, playfully roast without being mean; if neutral, be mischievous. Weave in at most one culture note if it fits. Avoid stock phrasing, vary structure, use no emojis, and do not curse.",
           },
           {
             role: "user",
-            content: `Player: ${playerName}\nEthics Score: ${input.ethicsScore.toFixed(2)}\nDeck Score: ${input.deckScore.toFixed(2)}\nDonation Score: ${input.donationScore.toFixed(2)}\nDonations: ${donations}\nDonations Received: ${donationsReceived}\nDeck Cards: ${deckNames}\nFeatured Card: ${featuredName}\nFeatured Card Weight: ${featuredWeight}\nFeatured Card Variant: ${featuredVariant}\nFeatured Card Level: ${featuredLevel}\nDeck Details: ${JSON.stringify(deckSnapshot)}`,
+            content: `Deck Score: ${input.deckScore.toFixed(2)}\nDonation Score: ${input.donationScore.toFixed(2)}\nCulture Notes: ${cultureNotesText}\nDeck Details: ${JSON.stringify(deckSnapshot)}`,
           },
         ],
       }),
