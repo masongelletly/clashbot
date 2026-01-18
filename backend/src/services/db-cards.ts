@@ -1,6 +1,6 @@
 import { getCardsCollection, type CardDocument } from "../db/mongodb.js";
 import { getInitialElo } from "./elo.js";
-import type { CardVariant } from "./cardElo.js";
+import type { CardVariant } from "../../../shared/types/cr-api-types";
 
 type MatchResult = "win" | "loss";
 

@@ -7,7 +7,19 @@
 import type * as CRTypes from "../../../shared/types/cr-api-types";
 import { getAllCards } from "./cards.js";
 import { eloToEthicalScore, getInitialElo } from "./elo.js";
-import { batchGetCardElos } from "./dbCards.js";
+import { batchGetCardElos, getCardElo } from "./db-cards.js";
+
+/**
+ * Get ethical score for a specific card variant
+ */
+export async function getCardEthicalScore(
+  cardId: number,
+  variant: CRTypes.CardVariant = "base"
+): Promise<number> {
+  const cardElo = await getCardElo(cardId, variant);
+  const elo = cardElo ?? getInitialElo();
+  return eloToEthicalScore(elo);
+}
 
 /**
  * Get all cards with their ELO and ethics values
@@ -18,7 +30,10 @@ export async function getAllCardsWithElo(): Promise<CRTypes.CardWithElo[]> {
   const allCards = cardsResponse.items;
 
   // Step 2: Build list of all card variants we need ELO for
-  const cardVariantsToFetch: Array<{ cardId: number; variant: "base" | "evo" | "hero" }> = [];
+  const cardVariantsToFetch: Array<{
+    cardId: number;
+    variant: CRTypes.CardVariant;
+  }> = [];
   
   for (const card of allCards) {
     // Always need base variant
@@ -37,7 +52,7 @@ export async function getAllCardsWithElo(): Promise<CRTypes.CardWithElo[]> {
   const eloMap = await batchGetCardElos(cardVariantsToFetch);
 
   // Helper function to get ELO from map
-  const getElo = (cardId: number, variant: "base" | "evo" | "hero"): number => {
+  const getElo = (cardId: number, variant: CRTypes.CardVariant): number => {
     const key = `${cardId}-${variant}`;
     return eloMap.get(key) ?? getInitialElo();
   };
@@ -111,4 +126,3 @@ export async function getAllCardsWithElo(): Promise<CRTypes.CardWithElo[]> {
 
   return allCardsWithVariants;
 }
-

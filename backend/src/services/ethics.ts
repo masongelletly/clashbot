@@ -1,8 +1,7 @@
 import type * as CRTypes from "../../../shared/types/cr-api-types";
 import { getPlayerDetails } from "./players.js";
 import { eloToEthicalScore, getInitialElo } from "./elo.js";
-import { batchGetCardElosAndMatchups } from "./dbCards.js";
-import type { CardVariant } from "./cardElo.js";
+import { batchGetCardElosAndMatchups } from "./db-cards.js";
 
 type DeckCard = NonNullable<CRTypes.PlayerProfileResponse["currentDeck"]>[number];
 
@@ -36,13 +35,16 @@ export async function calculateEthicsScore(
   } | null> = Array.from({ length: 8 }, () => null);
   
   // Step 1: Determine variants needed for all cards in deck
-  const cardVariantsToFetch: Array<{ cardId: number; variant: CardVariant }> = [];
+  const cardVariantsToFetch: Array<{
+    cardId: number;
+    variant: CRTypes.CardVariant;
+  }> = [];
   const slotInfo: Array<{
     card: DeckCard;
     index: number;
     showEvo: boolean;
     showHero: boolean;
-    variant: CardVariant;
+    variant: CRTypes.CardVariant;
   }> = [];
 
   for (let index = 0; index < Math.min(currentDeck.length, 8); index++) {
@@ -64,7 +66,7 @@ export async function calculateEthicsScore(
     const showHero = isHeroSlot && hasHero && hasHeroIcon && 
       ((index === 2 && trophies >= 5000) || (index === 3 && trophies >= 10000));
     
-    const variant: CardVariant = showEvo ? "evo" : showHero ? "hero" : "base";
+    const variant: CRTypes.CardVariant = showEvo ? "evo" : showHero ? "hero" : "base";
     
     // Add to batch fetch list
     cardVariantsToFetch.push({ cardId: card.id, variant });
@@ -77,7 +79,7 @@ export async function calculateEthicsScore(
   const { eloMap } = await batchGetCardElosAndMatchups(cardVariantsToFetch);
   
   // Helper function to get ELO from map
-  const getElo = (cardId: number, variant: CardVariant): number => {
+  const getElo = (cardId: number, variant: CRTypes.CardVariant): number => {
     const key = `${cardId}-${variant}`;
     return eloMap.get(key) ?? getInitialElo();
   };
