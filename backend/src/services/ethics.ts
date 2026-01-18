@@ -165,6 +165,7 @@ export async function calculateEthicsScore(
   const ethicsScore = deckScore + donationScore;
 
   return {
+    playerName: playerProfile.name,
     ethicsScore: ethicsScore,
     deckScore: deckScore,
     donationScore: donationScore,

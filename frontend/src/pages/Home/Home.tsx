@@ -158,9 +158,6 @@ export default function Home() {
             <div className="home__active-card">
               <div>
                 <h2>Welcome back</h2>
-                <div className="home__results-count">
-                  Active player detected.
-                </div>
               </div>
               {activePlayer && (
                 <div className="home__active-player">

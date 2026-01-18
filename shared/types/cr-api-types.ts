@@ -137,6 +137,7 @@ export type ExtendedPlayerProfileResponse = PlayerProfileResponse & {
 
 // ethics.ts
 export type EthicsCalculationResult = {
+  playerName?: string;
   ethicsScore: number;
   deckScore: number;
   donationScore: number;
@@ -155,6 +156,14 @@ export type EthicsCalculationResult = {
     isHero: boolean;
     slotIndex: number;
   } | null>;
+};
+
+export type EthicsOverviewRequest = {
+  playerTag: string;
+};
+
+export type EthicsOverviewResponse = {
+  overview: string;
 };
 
 // vote.ts

@@ -16,3 +16,21 @@ export async function getEthicsScore(
   return (await res.json()) as CRTypes.EthicsCalculationResult;
 }
 
+export async function getEthicsOverview(
+  payload: CRTypes.EthicsOverviewRequest
+): Promise<CRTypes.EthicsOverviewResponse> {
+  const res = await fetch(`${API_BASE}/api/ethics/overview`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Backend error (${res.status}): ${text}`);
+  }
+
+  return (await res.json()) as CRTypes.EthicsOverviewResponse;
+}
