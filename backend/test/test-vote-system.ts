@@ -6,9 +6,9 @@ import {
   incrementMatchups,
   getCardMatchups,
   resetCardElo,
-} from "../src/services/dbCards.js";
+} from "../src/services/db-cards.js";
 import { updateElo, calculateEloChange, getInitialElo } from "../src/services/elo.js";
-import type { CardVariant } from "../src/services/cardElo.js";
+import type { CardVariant } from "../../shared/types/cr-api-types";
 
 // Test card IDs (using real Clash Royale card IDs for testing)
 const TEST_CARDS = [

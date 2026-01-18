@@ -188,7 +188,7 @@ export type RandomCardsResponse = {
   card2Variant: CardVariant;
 };
 
-// cardsElo.ts
+// cards-elo.ts
 export type CardWithElo = {
   id: number;
   name: string;

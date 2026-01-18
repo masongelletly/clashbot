@@ -8,7 +8,7 @@ import {
   incrementMatchups,
   batchGetCardElosAndMatchups,
   recordMatchResult,
-} from "./dbCards.js";
+} from "./db-cards.js";
 
 // Cache for all cards (including evo/hero variants)
 let cachedCards: CRTypes.Card[] | null = null;
