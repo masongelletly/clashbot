@@ -44,6 +44,7 @@ frontend/.vite/
 # Backend
 # =========================
 backend/dist/
+backend/backups/
 
 # =========================
 # TypeScript
