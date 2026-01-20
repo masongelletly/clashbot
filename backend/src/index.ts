@@ -122,6 +122,37 @@ app.get("/api/players/scan", async (req, res) => {
   }
 });
 
+// GET /api/players/by-tag?playerTag=<tag>
+app.get("/api/players/by-tag", async (req, res) => {
+  try {
+    const playerTag = String(req.query.playerTag ?? "").trim();
+    if (!playerTag) {
+      return res.status(400).send("playerTag is required");
+    }
+
+    const playerDetails = await getPlayerDetails(playerTag);
+    const normalizedTag =
+      playerDetails.tag ?? (playerTag.startsWith("#") ? playerTag : `#${playerTag}`);
+    const match: CRTypes.scanClanForPlayerResponse = {
+      playerTag: normalizedTag,
+      playerName: playerDetails.name ?? normalizedTag,
+      clanTag: playerDetails.clan?.tag ?? "N/A",
+      clanName: playerDetails.clan?.name ?? "No clan",
+      role: playerDetails.role ?? "unknown",
+      matchedMemberName: playerDetails.name ?? normalizedTag,
+      matchedTrophies: playerDetails.trophies,
+    };
+
+    return res.json({ matches: [match], playerDetails });
+  } catch (e: any) {
+    const message = e?.message ?? String(e);
+    if (message.includes("ClashRoyale API error (404)")) {
+      return res.json({ matches: [], playerDetails: null });
+    }
+    res.status(400).send(message);
+  }
+});
+
 // GET /api/ethics?playerTag=<tag>
 app.get("/api/ethics", async (req, res) => {
   try {
