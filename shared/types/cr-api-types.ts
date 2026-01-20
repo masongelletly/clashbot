@@ -13,6 +13,12 @@ export type PlayerProfileResponse = {
     id: number;
     name?: string;
   };
+  clan?: {
+    tag: string;
+    name: string;
+    badgeId?: number;
+  };
+  role?: string;
   cards: Array<{
     name: string;
     id: number;

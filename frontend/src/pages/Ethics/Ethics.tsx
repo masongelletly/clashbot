@@ -17,14 +17,14 @@ type EthicsLocationState = {
 
 /**
  * Calculate position on gradient line (0-100%)
- * Score range: approximately -10 to +10 (adjustable)
+ * Score range: -5 to +5 (adjustable)
  * Center (grey) is at 50%
  */
 function calculateGradientPosition(score: number): number {
   // Normalize score to 0-100% range
-  // Assuming score range of -15 to +15, adjust as needed
-  const minScore = -15;
-  const maxScore = 15;
+  // Assuming score range of -5 to +5, adjust as needed
+  const minScore = -6;
+  const maxScore = 6;
   const normalized = (score - minScore) / (maxScore - minScore);
   const clamped = Math.max(0, Math.min(1, normalized));
   return clamped * 100;

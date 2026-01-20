@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { scanPlayerByNameAndClan } from "../../api/players";
+import { scanPlayerByNameAndClan, scanPlayerByTag } from "../../api/players";
 import ActivePlayerBadge from "../../components/ActivePlayerBadge/ActivePlayerBadge";
 import { useActivePlayer } from "../../state/ActivePlayerContext";
 import "./Home.css";
@@ -10,29 +10,40 @@ import type * as CRTypes from "../../../../shared/types/cr-api-types";
 export default function Home() {
   const [playerName, setPlayerName] = useState("");
   const [clanName, setClanName] = useState("");
+  const [playerTag, setPlayerTag] = useState("");
   const [data, setData] = useState<CRTypes.ScanPlayersResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { player: activePlayer, setPlayer, setPlayerProfile } = useActivePlayer();
   const [showSearchForm, setShowSearchForm] = useState(!activePlayer);
+  const [usePlayerTag, setUsePlayerTag] = useState(false);
 
   async function onFetch() {
     setErr(null);
     setData(null);
     setShowSearchForm(true);
 
-    if (!playerName.trim() || !clanName.trim()) {
-      setErr("Player name and clan name are required");
-      return;
+    const trimmedPlayerName = playerName.trim();
+    const trimmedClanName = clanName.trim();
+    const trimmedPlayerTag = playerTag.trim();
+
+    if (usePlayerTag) {
+      if (!trimmedPlayerTag) {
+        setErr("Player tag is required");
+        return;
+      }
+    } else {
+      if (!trimmedPlayerName || !trimmedClanName) {
+        setErr("Player name and clan name are required");
+        return;
+      }
     }
 
     setLoading(true);
     try {
-      const resp = await scanPlayerByNameAndClan(
-        playerName.trim(),
-        clanName.trim()
-      );
-
+      const resp = usePlayerTag
+        ? await scanPlayerByTag(trimmedPlayerTag)
+        : await scanPlayerByNameAndClan(trimmedPlayerName, trimmedClanName);
       setData(resp);
     } catch (e: any) {
       setErr(e?.message ?? String(e));
@@ -44,8 +55,31 @@ export default function Home() {
   const matches = data?.matches ?? [];
   const hasResults = matches.length > 0;
   const noResults = !!data && matches.length === 0;
+  const noResultsMessage = usePlayerTag
+    ? "No player found with that tag."
+    : "No players found matching that name in that clan.";
   const primaryMatch = matches[0];
   const showWelcomeCard = !!activePlayer && !showSearchForm && !data && !loading;
+  const errorMessage = (() => {
+    if (!err) {
+      return null;
+    }
+    const match = err.match(/\b(\d{3})\b/);
+    if (!match) {
+      return err;
+    }
+    const status = Number(match[1]);
+    if (Number.isNaN(status)) {
+      return err;
+    }
+    if (status >= 500) {
+      return "Server issue. Try again later.";
+    }
+    if (status >= 400) {
+      return "We couldn't find that player. Double-check the details and try again.";
+    }
+    return err;
+  })();
 
   useEffect(() => {
     if (!primaryMatch) {
@@ -64,18 +98,23 @@ export default function Home() {
     setPlayerProfile(data.playerDetails);
   }, [data?.playerDetails, setPlayerProfile]);
 
-  useEffect(() => {
-    if (activePlayer) {
-      setShowSearchForm(false);
-    }
-  }, [activePlayer]);
-
   function onSwitchPlayer() {
     setPlayer(null);
     setData(null);
     setErr(null);
     setPlayerName("");
     setClanName("");
+    setPlayerTag("");
+    setUsePlayerTag(false);
+    setShowSearchForm(true);
+  }
+
+  function onToggleSearchMode() {
+    setUsePlayerTag((prev) => !prev);
+    setErr(null);
+    setPlayerName("");
+    setClanName("");
+    setPlayerTag("");
     setShowSearchForm(true);
   }
 
@@ -93,7 +132,7 @@ export default function Home() {
           <div className="home__copy">
             <h1>Clashbot</h1>
             <p>
-              Clashbot is a Clash Royale deck builder and ethics evaluator. Player name and Clan name are required to retrieve your information.
+              Clashbot is a Clash Royale deck builder and ethics evaluator. Start with player and clan names, or use a player tag if you already have it.
             </p>
             <div className="home__hint-row">
               <div className="home__hint">
@@ -118,31 +157,56 @@ export default function Home() {
                 void onFetch();
               }}
             >
-              <div>
-                <h2>Find your player</h2>
-                <div className="home__results-count">
-                  Start with the player and clan name.
+              <div className="home__form-header">
+                <div>
+                  <h2>Find your player</h2>
                 </div>
+                <button
+                  className="cards__sort-toggle"
+                  type="button"
+                  onClick={onToggleSearchMode}
+                  aria-pressed={usePlayerTag}
+                  disabled={loading}
+                >
+                  {usePlayerTag ? "Use name + clan" : "Use player tag"}
+                </button>
               </div>
               <div className="home__form-grid">
-                <label className="home__field">
-                  Player name
-                  <input
-                    value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value)}
-                    placeholder="e.g. clashbot"
-                    disabled={loading}
-                  />
-                </label>
-                <label className="home__field">
-                  Clan name
-                  <input
-                    value={clanName}
-                    onChange={(e) => setClanName(e.target.value)}
-                    placeholder="e.g. supersell"
-                    disabled={loading}
-                  />
-                </label>
+                {usePlayerTag ? (
+                  <label className="home__field">
+                    Player tag
+                    <input
+                      value={playerTag}
+                      onChange={(e) => setPlayerTag(e.target.value)}
+                      placeholder="e.g. 298P8QUPG"
+                      maxLength={30}
+                      disabled={loading}
+                    />
+                  </label>
+                ) : (
+                  <>
+                    <label className="home__field">
+                      Player name
+                      <input
+                        value={playerName}
+                        onChange={(e) => setPlayerName(e.target.value)}
+                        placeholder="e.g. clashbot"
+                        maxLength={30}
+                        disabled={loading}
+                      />
+                    </label>
+                    <label className="home__field">
+                      Clan name
+                      <input
+                        value={clanName}
+                        onChange={(e) => setClanName(e.target.value)}
+                        placeholder="e.g. supersell"
+                        maxLength={30}
+                        disabled={loading}
+                      />
+                    </label>
+                  </>
+                )}
               </div>
               <div className="home__actions">
                 <button
@@ -186,15 +250,15 @@ export default function Home() {
         </header>
 
         <section className="home__results">
-          {err && <div className="home__error">{err}</div>}
+          {errorMessage && <div className="home__error">{errorMessage}</div>}
 
-          {noResults && (
+          {!errorMessage && noResults && (
             <div className="home__hint">
-              No players found matching that name in that clan.
+              {noResultsMessage}
             </div>
           )}
 
-          {hasResults && primaryMatch && (
+          {!errorMessage && hasResults && primaryMatch && (
             <>
               <div className="home__found">
                 <div className="home__found-header">
