@@ -57,7 +57,7 @@ export default function Home() {
   const noResults = !!data && matches.length === 0;
   const noResultsMessage = usePlayerTag
     ? "No player found with that tag."
-    : "No players found matching that name in that clan.";
+    : "No players found. If your clan name is popular, use your player tag to search instead.";
   const primaryMatch = matches[0];
   const showWelcomeCard = !!activePlayer && !showSearchForm && !data && !loading;
   const errorMessage = (() => {
@@ -112,6 +112,9 @@ export default function Home() {
   function onToggleSearchMode() {
     setUsePlayerTag((prev) => !prev);
     setErr(null);
+    if (!data?.matches?.length) {
+      setData(null);
+    }
     setPlayerName("");
     setClanName("");
     setPlayerTag("");
@@ -289,30 +292,6 @@ export default function Home() {
                     Deck builder
                   </Link>
                 </div>
-              </div>
-
-              <div className="home__results-header">
-                <h3>Matches</h3>
-                <div className="home__results-count">{matches.length} found</div>
-              </div>
-              <div className="home__grid">
-                {matches.map((m) => (
-                  <div
-                    key={`${m.clanTag}:${m.playerTag}`}
-                    className="home__match-card"
-                  >
-                    <div>
-                      <strong>{m.matchedMemberName}</strong>{" "}
-                      <span className="home__match-meta">{m.playerTag}</span>
-                    </div>
-                    <div className="home__match-meta">
-                      Clan: {m.clanName} ({m.clanTag})
-                    </div>
-                    <div className="home__match-meta">
-                      Trophies: {m.matchedTrophies}
-                    </div>
-                  </div>
-                ))}
               </div>
             </>
           )}

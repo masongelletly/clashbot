@@ -8,7 +8,7 @@ import { crFetch } from "../crFetch.js";
 export async function scanClanForPlayer(
   input: Omit<CRTypes.scanClanForPlayerInput, "apiKey">
 ): Promise<CRTypes.scanClanForPlayerResponse[]> {
-  const { playerName, clanName, maxClansToScan = 10 } = input;
+  const { playerName, clanName, maxClansToScan = 50 } = input;
 
   if (!playerName?.trim()) throw new Error("playerName is required");
   if (!clanName?.trim()) throw new Error("clanName is required");
@@ -45,6 +45,7 @@ export async function scanClanForPlayer(
           matchedMemberName: m.name,
           matchedTrophies: m.trophies,
         });
+        return matches;
       }
     }
   }
