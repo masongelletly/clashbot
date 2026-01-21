@@ -71,7 +71,7 @@ const useDeckSwipe = (deckCount: number, initialIndex = 0): DeckSwipeState => {
   const dragStartX = useRef(0);
   const activePointerId = useRef<number | null>(null);
   const swipeRef = useRef<HTMLDivElement | null>(null);
-  const [cardWidth, setCardWidth] = useState(0);
+  const [slideWidth, setSlideWidth] = useState(0);
 
   useEffect(() => {
     if (deckCount === 0) {
@@ -89,11 +89,27 @@ const useDeckSwipe = (deckCount: number, initialIndex = 0): DeckSwipeState => {
   useLayoutEffect(() => {
     const node = swipeRef.current;
     if (!node || deckCount === 0) {
-      setCardWidth(0);
+      setSlideWidth(0);
       return;
     }
     const updateWidth = () => {
-      setCardWidth(node.getBoundingClientRect().width);
+      const track = node.querySelector<HTMLElement>(".builder__swipe-track");
+      const decks = track?.querySelectorAll<HTMLElement>(".builder__deck");
+      if (!track || !decks || decks.length === 0) {
+        setSlideWidth(node.getBoundingClientRect().width);
+        return;
+      }
+      const deckRect = decks[0].getBoundingClientRect();
+      let gap = 0;
+      if (decks.length > 1) {
+        const nextRect = decks[1].getBoundingClientRect();
+        gap = nextRect.left - deckRect.right;
+      } else {
+        const gapToken = window.getComputedStyle(track).columnGap || "0";
+        const gapValue = parseFloat(gapToken);
+        gap = Number.isFinite(gapValue) ? gapValue : 0;
+      }
+      setSlideWidth(deckRect.width + gap);
     };
     updateWidth();
 
@@ -108,11 +124,11 @@ const useDeckSwipe = (deckCount: number, initialIndex = 0): DeckSwipeState => {
   }, [deckCount]);
 
   const canSwipe = deckCount > 1;
-  const swipeThreshold = Math.max(80, cardWidth * 0.25);
+  const swipeThreshold = Math.max(80, slideWidth * 0.25);
   const trackOffset =
-    cardWidth === 0
+    slideWidth === 0
       ? 0
-      : -activeIndex * cardWidth + (isDragging ? dragOffset : 0);
+      : -activeIndex * slideWidth + (isDragging ? dragOffset : 0);
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (!canSwipe) {

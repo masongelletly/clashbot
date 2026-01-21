@@ -53,6 +53,7 @@
 .builder__swipe-track {
   display: flex;
   box-sizing: border-box;
+  padding: 0 var(--swipe-gutter);
   gap: calc(var(--swipe-gutter) * 2);
   transition: transform 0.35s ease;
   will-change: transform;
@@ -64,6 +65,7 @@
 
 .builder__deck {
   flex: 0 0 100%;
+  min-width: 0;
   padding: 20px 18px 18px;
   display: grid;
   gap: 14px;
