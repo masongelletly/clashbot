@@ -43,6 +43,7 @@
   background: transparent;
   touch-action: pan-y;
   cursor: grab;
+  padding: 0 var(--swipe-gutter);
 }
 
 .builder__swipe--dragging {
@@ -53,7 +54,6 @@
 .builder__swipe-track {
   display: flex;
   box-sizing: border-box;
-  padding: 0 var(--swipe-gutter);
   gap: calc(var(--swipe-gutter) * 2);
   transition: transform 0.35s ease;
   will-change: transform;
