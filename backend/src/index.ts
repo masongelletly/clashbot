@@ -115,6 +115,12 @@ app.get("/api/players/scan", async (req, res) => {
 
     const first = matches[0];
     const playerDetails = first ? await getPlayerDetails(first.playerTag) : null;
+    if (first) {
+      const matchedName = first.matchedMemberName ?? first.playerName;
+      console.log(
+        `[search] ${new Date().toISOString()} name+clan "${matchedName}"`
+      );
+    }
 
     return res.json({ matches, playerDetails });
   } catch (e: any) {
@@ -142,6 +148,9 @@ app.get("/api/players/by-tag", async (req, res) => {
       matchedMemberName: playerDetails.name ?? normalizedTag,
       matchedTrophies: playerDetails.trophies,
     };
+    console.log(
+      `[search] ${new Date().toISOString()} tag "${match.matchedMemberName}"`
+    );
 
     return res.json({ matches: [match], playerDetails });
   } catch (e: any) {
