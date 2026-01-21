@@ -64,7 +64,7 @@
 }
 
 .builder__deck {
-  flex: 0 0 calc(100% - var(--page-gutter, 5vw));
+  flex: 0 0 calc(100% - var(--page-gutter, 12vw));
   min-width: 0;
   padding: 20px 18px 18px;
   display: grid;
