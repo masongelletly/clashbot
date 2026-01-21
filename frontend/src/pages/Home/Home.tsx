@@ -175,7 +175,12 @@ export default function Home() {
                 </button>
               </div>
               <div className="home__form-grid">
-                {usePlayerTag ? (
+                <div
+                  className={`home__form-mode home__form-mode--tag${
+                    usePlayerTag ? " is-active" : ""
+                  }`}
+                  aria-hidden={!usePlayerTag}
+                >
                   <label className="home__field">
                     Player tag
                     <input
@@ -183,33 +188,37 @@ export default function Home() {
                       onChange={(e) => setPlayerTag(e.target.value)}
                       placeholder="e.g. 298P8QUPG"
                       maxLength={30}
-                      disabled={loading}
+                      disabled={loading || !usePlayerTag}
                     />
                   </label>
-                ) : (
-                  <>
-                    <label className="home__field">
-                      Player name
-                      <input
-                        value={playerName}
-                        onChange={(e) => setPlayerName(e.target.value)}
-                        placeholder="e.g. clashbot"
-                        maxLength={30}
-                        disabled={loading}
-                      />
-                    </label>
-                    <label className="home__field">
-                      Clan name
-                      <input
-                        value={clanName}
-                        onChange={(e) => setClanName(e.target.value)}
-                        placeholder="e.g. supersell"
-                        maxLength={30}
-                        disabled={loading}
-                      />
-                    </label>
-                  </>
-                )}
+                </div>
+                <div
+                  className={`home__form-mode home__form-mode--name${
+                    usePlayerTag ? "" : " is-active"
+                  }`}
+                  aria-hidden={usePlayerTag}
+                >
+                  <label className="home__field">
+                    Player name
+                    <input
+                      value={playerName}
+                      onChange={(e) => setPlayerName(e.target.value)}
+                      placeholder="e.g. clashbot"
+                      maxLength={30}
+                      disabled={loading || usePlayerTag}
+                    />
+                  </label>
+                  <label className="home__field">
+                    Clan name
+                    <input
+                      value={clanName}
+                      onChange={(e) => setClanName(e.target.value)}
+                      placeholder="e.g. supersell"
+                      maxLength={30}
+                      disabled={loading || usePlayerTag}
+                    />
+                  </label>
+                </div>
               </div>
               <div className="home__actions">
                 <button
@@ -296,6 +305,17 @@ export default function Home() {
             </>
           )}
         </section>
+
+        <footer className="home__contact">
+          <span>Contact us on</span>
+          <a
+            href="https://www.instagram.com/clashbot.wtf/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Instagram
+          </a>
+        </footer>
       </div>
     </div>
   );
