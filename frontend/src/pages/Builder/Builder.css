@@ -40,10 +40,11 @@
   overflow: hidden;
   border-radius: 22px;
   border: none;
-  background: transparent;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(77, 155, 255, 0.25), transparent 55%),
+    linear-gradient(160deg, rgba(19, 16, 38, 0.96), rgba(12, 10, 26, 0.96));
   touch-action: pan-y;
   cursor: grab;
-  padding: 0 var(--swipe-gutter);
 }
 
 .builder__swipe--dragging {
@@ -54,6 +55,7 @@
 .builder__swipe-track {
   display: flex;
   box-sizing: border-box;
+  padding: 0 var(--swipe-gutter);
   gap: calc(var(--swipe-gutter) * 2);
   transition: transform 0.35s ease;
   will-change: transform;
