@@ -181,16 +181,18 @@ export default function Home() {
                   }`}
                   aria-hidden={!usePlayerTag}
                 >
-                  <label className="home__field">
-                    Player tag
-                    <input
-                      value={playerTag}
-                      onChange={(e) => setPlayerTag(e.target.value)}
-                      placeholder="e.g. 298P8QUPG"
-                      maxLength={30}
-                      disabled={loading || !usePlayerTag}
-                    />
-                  </label>
+                  <div className="home__form-mode-inner">
+                    <label className="home__field">
+                      Player tag
+                      <input
+                        value={playerTag}
+                        onChange={(e) => setPlayerTag(e.target.value)}
+                        placeholder="e.g. 298P8QUPG"
+                        maxLength={30}
+                        disabled={loading || !usePlayerTag}
+                      />
+                    </label>
+                  </div>
                 </div>
                 <div
                   className={`home__form-mode home__form-mode--name${
@@ -198,26 +200,28 @@ export default function Home() {
                   }`}
                   aria-hidden={usePlayerTag}
                 >
-                  <label className="home__field">
-                    Player name
-                    <input
-                      value={playerName}
-                      onChange={(e) => setPlayerName(e.target.value)}
-                      placeholder="e.g. clashbot"
-                      maxLength={30}
-                      disabled={loading || usePlayerTag}
-                    />
-                  </label>
-                  <label className="home__field">
-                    Clan name
-                    <input
-                      value={clanName}
-                      onChange={(e) => setClanName(e.target.value)}
-                      placeholder="e.g. supersell"
-                      maxLength={30}
-                      disabled={loading || usePlayerTag}
-                    />
-                  </label>
+                  <div className="home__form-mode-inner">
+                    <label className="home__field">
+                      Player name
+                      <input
+                        value={playerName}
+                        onChange={(e) => setPlayerName(e.target.value)}
+                        placeholder="e.g. clashbot"
+                        maxLength={30}
+                        disabled={loading || usePlayerTag}
+                      />
+                    </label>
+                    <label className="home__field">
+                      Clan name
+                      <input
+                        value={clanName}
+                        onChange={(e) => setClanName(e.target.value)}
+                        placeholder="e.g. supersell"
+                        maxLength={30}
+                        disabled={loading || usePlayerTag}
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
               <div className="home__actions">
