@@ -53,7 +53,7 @@
 .builder__swipe-track {
   display: flex;
   box-sizing: border-box;
-  padding: 0 var(--swipe-gutter);
+  padding: 0 var(--swipe-gutter) 0 0;
   gap: calc(var(--swipe-gutter) * 2);
   transition: transform 0.35s ease;
   will-change: transform;
