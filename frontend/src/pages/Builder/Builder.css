@@ -36,6 +36,8 @@
 
 .builder__swipe {
   --swipe-gutter: clamp(12px, 4vw, 28px);
+  --swipe-snap-duration: 0.55s;
+  --swipe-snap-ease: cubic-bezier(0.22, 1, 0.36, 1);
   position: relative;
   overflow: hidden;
   border-radius: 22px;
@@ -55,7 +57,7 @@
   box-sizing: border-box;
   padding: 0;
   gap: calc(var(--swipe-gutter) * 2);
-  transition: transform 0.35s ease;
+  transition: transform var(--swipe-snap-duration) var(--swipe-snap-ease);
   will-change: transform;
 }
 
@@ -371,5 +373,11 @@
 
   .builder__deck-description {
     max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .builder__swipe-track {
+    transition: none;
   }
 }

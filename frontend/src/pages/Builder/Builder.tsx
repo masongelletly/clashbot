@@ -69,7 +69,9 @@ const useDeckSwipe = (deckCount: number, initialIndex = 0): DeckSwipeState => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const dragStartX = useRef(0);
+  const dragStartY = useRef(0);
   const activePointerId = useRef<number | null>(null);
+  const dragIntent = useRef<"pending" | "horizontal" | "vertical" | null>(null);
   const swipeRef = useRef<HTMLDivElement | null>(null);
   const [slideWidth, setSlideWidth] = useState(0);
 
@@ -124,7 +126,7 @@ const useDeckSwipe = (deckCount: number, initialIndex = 0): DeckSwipeState => {
   }, [deckCount]);
 
   const canSwipe = deckCount > 1;
-  const swipeThreshold = Math.max(80, slideWidth * 0.25);
+  const swipeThreshold = Math.max(120, slideWidth * 0.33);
   const trackOffset =
     slideWidth === 0
       ? 0
@@ -136,42 +138,72 @@ const useDeckSwipe = (deckCount: number, initialIndex = 0): DeckSwipeState => {
     }
     activePointerId.current = event.pointerId;
     dragStartX.current = event.clientX;
-    setIsDragging(true);
+    dragStartY.current = event.clientY;
+    dragIntent.current = "pending";
+    setIsDragging(false);
     setDragOffset(0);
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    if (!isDragging || activePointerId.current !== event.pointerId) {
+    if (activePointerId.current !== event.pointerId) {
       return;
     }
-    const delta = event.clientX - dragStartX.current;
-    const atStart = activeIndex === 0 && delta > 0;
-    const atEnd = activeIndex === deckCount - 1 && delta < 0;
-    const resisted = atStart || atEnd ? delta * 0.35 : delta;
+    const deltaX = event.clientX - dragStartX.current;
+    const deltaY = event.clientY - dragStartY.current;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+
+    if (dragIntent.current !== "horizontal") {
+      if (dragIntent.current !== "pending") {
+        return;
+      }
+      const intentThreshold = 12;
+      if (absX < intentThreshold && absY < intentThreshold) {
+        return;
+      }
+      if (absX >= absY * 1.2) {
+        dragIntent.current = "horizontal";
+      } else if (absY >= absX * 1.2) {
+        dragIntent.current = "vertical";
+        return;
+      } else {
+        return;
+      }
+    }
+
+    if (!isDragging) {
+      setIsDragging(true);
+    }
+    const atStart = activeIndex === 0 && deltaX > 0;
+    const atEnd = activeIndex === deckCount - 1 && deltaX < 0;
+    const resisted = atStart || atEnd ? deltaX * 0.35 : deltaX;
     setDragOffset(resisted);
   };
 
   const handlePointerEnd = (event: PointerEvent<HTMLDivElement>) => {
-    if (!isDragging || activePointerId.current !== event.pointerId) {
+    if (activePointerId.current !== event.pointerId) {
       return;
     }
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-    const delta = event.clientX - dragStartX.current;
-    if (Math.abs(delta) > swipeThreshold) {
-      const direction = delta < 0 ? 1 : -1;
-      setActiveIndex((prev) => {
-        const next = prev + direction;
-        if (next < 0 || next >= deckCount) {
-          return prev;
-        }
-        return next;
-      });
+    if (isDragging) {
+      const delta = event.clientX - dragStartX.current;
+      if (Math.abs(delta) > swipeThreshold) {
+        const direction = delta < 0 ? 1 : -1;
+        setActiveIndex((prev) => {
+          const next = prev + direction;
+          if (next < 0 || next >= deckCount) {
+            return prev;
+          }
+          return next;
+        });
+      }
     }
     setIsDragging(false);
     setDragOffset(0);
+    dragIntent.current = null;
     activePointerId.current = null;
   };
 
