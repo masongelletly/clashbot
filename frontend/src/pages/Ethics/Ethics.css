@@ -11,6 +11,11 @@
   font-weight: 600;
 }
 
+.ethics__card {
+  animation: ethics-card-fade 0.45s ease both;
+  will-change: opacity, transform;
+}
+
 .ethics__copy {
   margin: 0;
   color: var(--muted);
@@ -312,6 +317,24 @@
   font-size: 0.9rem;
   margin-top: 0.5rem;
   opacity: 0.8;
+}
+
+@keyframes ethics-card-fade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ethics__card {
+    animation: none;
+    will-change: auto;
+  }
 }
 
 @media (max-width: 700px) {
