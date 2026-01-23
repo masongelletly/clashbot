@@ -12,6 +12,33 @@ export const trueMetaDecks: CuratedDeckDefinition[] = [
   },
 
   {
+    title: "Mega Knight Freeze", 
+    cards:
+      [
+        "battle ram", "inferno dragon", "mini p.e.k.k.a", "mega knight",
+        "mother witch", "bomber", "freeze", "zap"
+      ],
+  },
+
+  {
+    title: "Mega Knight Rush", 
+    cards:
+      [
+        "royal ghost", "giant snowball", "little prince", "ram rider",
+        "mega knight", "berserker", "lightning", "electro spirit"
+      ],
+  },
+
+  {
+    title: "Mega Knight Miner", 
+    cards:
+      [
+        "skeleton barrel", "bats", "miner", "mega knight",
+        "inferno dragon", "goblin gang", "spear goblins", "zap"
+      ],
+  },
+
+  {
     title: "Modern Graveyard", 
     cards:
       [
