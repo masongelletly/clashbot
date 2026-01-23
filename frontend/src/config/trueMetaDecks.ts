@@ -70,7 +70,7 @@ export const trueMetaDecks: CuratedDeckDefinition[] = [
     cards:
       [
         "goblin cage", "royal recruits", "royal hogs", "flying machine",
-        "zappies", "arrows", "electro spirit", "goblin barrel"
+        "zappies", "arrows", "electro spirit", "barbarian barrel"
       ],
   },
 
