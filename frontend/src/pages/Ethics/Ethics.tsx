@@ -63,6 +63,8 @@ export default function Ethics() {
   const [error, setError] = useState<string | null>(null);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
+  const [shareImageFile, setShareImageFile] = useState<File | null>(null);
+  const [shareImageStatus, setShareImageStatus] = useState<"idle" | "loading" | "ready">("idle");
   const scoreCardRef = useRef<HTMLElement | null>(null);
   const shareCaptureRef = useRef<HTMLDivElement | null>(null);
 
@@ -95,40 +97,21 @@ export default function Ethics() {
     ? scoreColor(ethicsData.donationScore)
     : null;
 
-  const handleShare = async () => {
-    if (!ethicsData || !scoreCardRef.current || !shareCaptureRef.current || sharing) {
+  useEffect(() => {
+    if (!ethicsData || !scoreCardRef.current || !shareCaptureRef.current) {
+      setShareImageFile(null);
+      setShareImageStatus("idle");
       return;
     }
 
-    setSharing(true);
-    setShareMessage(null);
+    let cancelled = false;
+    setShareImageStatus("loading");
 
-    const shareBaseLink = "https://www.clashbot.wtf";
-    const shareName = displayPlayer?.playerName ?? displayPlayer?.playerTag ?? "Player";
-    const shareTitle = `${shareName} Ethics Score`;
-    const shareUrl = shareBaseLink;
-
-    if (typeof navigator === "undefined" || typeof navigator.share !== "function") {
-      if (navigator?.clipboard?.writeText && shareUrl) {
-        try {
-          await navigator.clipboard.writeText(shareUrl);
-          setShareMessage("Share not supported here. Link copied instead.");
-        } catch {
-          setShareMessage("Sharing isn't supported in this browser.");
-        }
-      } else {
-        setShareMessage("Sharing isn't supported in this browser.");
-      }
-      setSharing(false);
-      return;
-    }
-
-    try {
-      let shareFile: File | null = null;
+    const prepareShareImage = async () => {
       try {
         const { default: html2canvas } = await import("html2canvas");
-        const cardBackground = getComputedStyle(scoreCardRef.current).backgroundColor;
-        const canvas = await html2canvas(shareCaptureRef.current, {
+        const cardBackground = getComputedStyle(scoreCardRef.current!).backgroundColor;
+        const canvas = await html2canvas(shareCaptureRef.current!, {
           backgroundColor: cardBackground || "#12102a",
           useCORS: true,
           scale: Math.min(window.devicePixelRatio || 1, 2),
@@ -136,7 +119,7 @@ export default function Ethics() {
             (element as HTMLElement).dataset?.shareIgnore === "true"
         });
 
-        shareFile = await new Promise<File | null>((resolve) => {
+        const file = await new Promise<File | null>((resolve) => {
           canvas.toBlob((blob) => {
             if (!blob) {
               resolve(null);
@@ -153,17 +136,61 @@ export default function Ethics() {
             );
           }, "image/png");
         });
-      } catch {
-        shareFile = null;
-      }
 
+        if (!cancelled) {
+          setShareImageFile(file);
+          setShareImageStatus(file ? "ready" : "idle");
+        }
+      } catch {
+        if (!cancelled) {
+          setShareImageFile(null);
+          setShareImageStatus("idle");
+        }
+      }
+    };
+
+    prepareShareImage();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [ethicsData, displayPlayer?.playerName, displayPlayer?.playerTag]);
+
+  const handleShare = async () => {
+    if (!ethicsData || !scoreCardRef.current || !shareCaptureRef.current || sharing) {
+      return;
+    }
+
+    setSharing(true);
+    setShareMessage(null);
+
+    const shareBaseLink = "https://www.clashbot.wtf";
+    const shareName = displayPlayer?.playerName ?? displayPlayer?.playerTag ?? "Player";
+    const shareText = `${shareName} Ethics Score: ${ethicsData.ethicsScore.toFixed(2)}\n${shareBaseLink}`;
+    const shareUrl = shareBaseLink;
+
+    if (typeof navigator === "undefined" || typeof navigator.share !== "function") {
+      if (navigator?.clipboard?.writeText && shareUrl) {
+        try {
+          await navigator.clipboard.writeText(shareText);
+          setShareMessage("Share not supported here. Link copied instead.");
+        } catch {
+          setShareMessage("Sharing isn't supported in this browser.");
+        }
+      } else {
+        setShareMessage("Sharing isn't supported in this browser.");
+      }
+      setSharing(false);
+      return;
+    }
+
+    try {
       const shareData: ShareData = {
-        title: shareTitle,
-        url: shareUrl
+        text: shareText
       };
 
-      if (shareFile && navigator.canShare?.({ files: [shareFile] })) {
-        shareData.files = [shareFile];
+      if (shareImageFile && navigator.canShare?.({ files: [shareImageFile] })) {
+        shareData.files = [shareImageFile];
       }
 
       await navigator.share(shareData);
@@ -220,10 +247,10 @@ export default function Ethics() {
                     className="ethics__share-button"
                     type="button"
                     onClick={handleShare}
-                    disabled={sharing}
+                    disabled={sharing || shareImageStatus === "loading"}
                     aria-label="Share ethics score"
                   >
-                    {sharing ? "Sharing..." : "Share"}
+                    {sharing ? "Sharing..." : shareImageStatus === "loading" ? "Preparing..." : "Share"}
                   </button>
                 </div>
               </div>
