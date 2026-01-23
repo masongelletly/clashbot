@@ -6,8 +6,8 @@ export const trueMetaDecks: CuratedDeckDefinition[] = [
     title: "Hog 2.6", 
     cards:
       [
-        "musketeer", "cannon", "hog rider", "ice golem",
-        "fireball", "ice spirit", "the log", "skeletons"
+        "ice spirit", "cannon", "musketeer", "ice golem",
+        "fireball", "cannon", "the log", "skeletons"
       ],
   },
 
@@ -30,6 +30,15 @@ export const trueMetaDecks: CuratedDeckDefinition[] = [
   },
 
   {
+    title: "Hog EQ", 
+    cards:
+      [
+        "firecracker", "ice spirit", "knight", "skeletons",
+        "tesla", "earthquake", "the log", "hog rider"
+      ],
+  },
+
+  {
     title: "X-Bow 3.0", 
     cards:
       [
@@ -44,6 +53,24 @@ export const trueMetaDecks: CuratedDeckDefinition[] = [
       [
         "goblin barrel", "skeleton army", "knight", "princess",
         "dart goblin", "ice spirit", "the log", "inferno tower"
+      ],
+  },
+
+  {
+    title: "Miner Control", 
+    cards:
+      [
+        "valkyrie", "tesla", "miner", "rocket",
+        "fire spirit", "skeletons", "royal delivery", "the log"
+      ],
+  },
+
+  {
+    title: "Goblin Giant Sparky", 
+    cards:
+      [
+        "goblin giant", "zap", "elite barbarians", "sparky",
+        "dark prince", "electro wizard", "heal spirit", "rage"
       ],
   },
 

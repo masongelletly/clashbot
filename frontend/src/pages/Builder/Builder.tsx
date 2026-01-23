@@ -8,6 +8,7 @@ import {
   type PointerEvent,
 } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { getAllCardsWithElo } from "../../api/cards";
 import ActivePlayerBadge from "../../components/ActivePlayerBadge/ActivePlayerBadge";
 import { useActivePlayer } from "../../state/ActivePlayerContext";
 import { getHeroIconOverride } from "../../utils/cardIconOverrides";
@@ -16,6 +17,7 @@ import {
   buildWinConditionDecks,
   buildWarDecks,
   normalizeCardLevel,
+  type CuratedDeckCard,
   type DeckOption,
   type WarDeckStrategy,
   type PreferredWinCondition,
@@ -38,6 +40,9 @@ type BuilderLocationState = {
 
 const TRUE_META_EVO_SLOTS = new Set([0, 1]);
 const TRUE_META_HERO_SLOTS = new Set([2, 3]);
+const TRUE_META_DEFINITION_BY_TITLE = new Map(
+  trueMetaDefinitions.map((definition) => [definition.title, definition])
+);
 
 const NORMALIZED_MAX_LEVEL = cardUpgradeCounts.levels.length
   ? Math.max(...cardUpgradeCounts.levels)
@@ -120,7 +125,33 @@ const DECK_SLOT_COUNT = 8;
 type DisplayDeck = {
   deck: Array<PlayerCard | null>;
   averageElixir: number;
+  cardRefs?: CuratedDeckCard[];
 };
+
+const getAverageLevel = (deck: DisplayDeck): number | null => {
+  const filled = deck.deck.filter((card): card is PlayerCard => Boolean(card));
+  if (filled.length === 0) {
+    return null;
+  }
+  const total = filled.reduce((sum, card) => sum + normalizeCardLevel(card), 0);
+  return total / filled.length;
+};
+
+const getAverageMaxLevel = (deck: DisplayDeck): number | null => {
+  const filled = deck.deck.filter((card): card is PlayerCard => Boolean(card));
+  if (filled.length === 0) {
+    return null;
+  }
+  const total = filled.reduce((sum, card) => sum + getMaxUpgradeLevel(card), 0);
+  return total / filled.length;
+};
+
+const normalizeLookupName = (name: string): string =>
+  name
+    .toLowerCase()
+    .replace(/\s*\((evo|hero|evolution)\)\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
 type DeckSwipeState = {
   activeIndex: number;
@@ -195,7 +226,7 @@ const useDeckSwipe = (deckCount: number, initialIndex = 0): DeckSwipeState => {
   }, [deckCount]);
 
   const canSwipe = deckCount > 1;
-  const swipeThreshold = Math.max(120, slideWidth * 0.33);
+  const swipeThreshold = Math.max(80, slideWidth * 0.2);
   const trackOffset =
     slideWidth === 0
       ? 0
@@ -330,11 +361,67 @@ export default function Builder() {
     }, { strategy: warStrategy });
   }, [playerProfile, warStrategy]);
 
+  const [cardCatalog, setCardCatalog] = useState<{
+    byName: Map<string, CRTypes.CardWithElo>;
+    byId: Map<number, CRTypes.CardWithElo>;
+  }>({
+    byName: new Map(),
+    byId: new Map(),
+  });
+
+  useEffect(() => {
+    if (!playerProfile) {
+      return;
+    }
+    let isActive = true;
+    const loadCards = async () => {
+      try {
+        const response = await getAllCardsWithElo();
+        if (!isActive) {
+          return;
+        }
+        const byName = new Map<string, CRTypes.CardWithElo>();
+        const byId = new Map<number, CRTypes.CardWithElo>();
+        response.items.forEach((card) => {
+          const isVariant = /\((evo|hero)\)/i.test(card.name);
+          if (isVariant) {
+            return;
+          }
+          const normalized = normalizeLookupName(card.name);
+          if (normalized && !byName.has(normalized)) {
+            byName.set(normalized, card);
+          }
+          if (!byId.has(card.id)) {
+            byId.set(card.id, card);
+          }
+        });
+        setCardCatalog({ byName, byId });
+      } catch {
+        if (isActive) {
+          setCardCatalog({ byName: new Map(), byId: new Map() });
+        }
+      }
+    };
+    void loadCards();
+    return () => {
+      isActive = false;
+    };
+  }, [playerProfile]);
+
   const trueMetaDecks = useMemo(() => {
     if (!playerProfile || trueMetaDefinitions.length === 0) {
       return [];
     }
-    return buildCuratedDecks(playerProfile.cards, trueMetaDefinitions);
+    const decks = buildCuratedDecks(playerProfile.cards, trueMetaDefinitions).map(
+      (deck) => ({
+        ...deck,
+        cardRefs: TRUE_META_DEFINITION_BY_TITLE.get(deck.title)?.cards ?? [],
+      })
+    );
+    const averageForSort = (deck: DisplayDeck) => getAverageLevel(deck) ?? -Infinity;
+    return [...decks].sort(
+      (left, right) => averageForSort(right) - averageForSort(left)
+    );
   }, [playerProfile, trueMetaDefinitions]);
 
   const trueMetaDeckCount = trueMetaDecks.length;
@@ -349,6 +436,16 @@ export default function Builder() {
     }
     const nameObj = card.name as unknown as { name?: string; en?: string };
     return nameObj?.name ?? nameObj?.en ?? `Card ${card.id}`;
+  };
+  const resolveCatalogCard = (reference?: CuratedDeckCard) => {
+    if (reference == null) {
+      return null;
+    }
+    if (typeof reference === "number") {
+      return cardCatalog.byId.get(reference) ?? null;
+    }
+    const normalized = normalizeLookupName(reference);
+    return cardCatalog.byName.get(normalized) ?? null;
   };
   const cardIconUrl = (card: PlayerCard) => {
     const icons = card.iconUrls as Record<string, string | undefined> | undefined;
@@ -376,14 +473,6 @@ export default function Builder() {
       return heroOverride;
     }
     return card.iconUrls?.heroMedium ?? cardIconUrl(card);
-  };
-  const getAverageLevel = (deck: DisplayDeck): number | null => {
-    const filled = deck.deck.filter((card): card is PlayerCard => Boolean(card));
-    if (filled.length === 0) {
-      return null;
-    }
-    const total = filled.reduce((sum, card) => sum + normalizeCardLevel(card), 0);
-    return total / filled.length;
   };
   const renderDeckCard = ({
     deck,
@@ -424,7 +513,15 @@ export default function Builder() {
     );
     const showAvgLevelStat = avgLevel != null;
     const showAvgElixirStat = showAvgElixir;
-    const showMeta = Boolean(description) || showAvgLevelStat || showAvgElixirStat;
+    const showUpgradeStats = showUpgradePotential !== undefined;
+    const maxAvgLevel = showUpgradeStats ? getAverageMaxLevel(deck) : null;
+    const showMaxAvgLevelStat = maxAvgLevel != null;
+    const upgradeHidden = showUpgradePotential === false;
+    const showMeta =
+      Boolean(description) ||
+      showAvgLevelStat ||
+      showAvgElixirStat ||
+      showMaxAvgLevelStat;
     const isTrueMetaLayout = slotLayout === "true-meta";
 
     return (
@@ -439,7 +536,7 @@ export default function Builder() {
         <header
           className={`builder__deck-header${
             inlineHeader ? " builder__deck-header--inline" : ""
-          }`}
+          }${isTrueMetaLayout ? " builder__deck-header--true-meta" : ""}`}
         >
           <div className="builder__deck-title">
             <span className="builder__deck-label">{label}</span>
@@ -477,6 +574,18 @@ export default function Builder() {
                     </span>
                   </div>
                 ) : null}
+                {showMaxAvgLevelStat ? (
+                  <div
+                    className={`builder__deck-stat builder__deck-stat--upgrade${
+                      inlineStats ? " builder__deck-stat--inline" : ""
+                    }${upgradeHidden ? " is-hidden" : ""}`}
+                  >
+                    <span className="builder__deck-stat-label">Max avg level</span>
+                    <span className="builder__deck-stat-value">
+                      {maxAvgLevel?.toFixed(1)}
+                    </span>
+                  </div>
+                ) : null}
                 {showAvgElixirStat ? (
                   <div
                     className={`builder__deck-stat${
@@ -496,6 +605,7 @@ export default function Builder() {
 
         <div className="builder__deck-grid" aria-label={ariaLabel}>
           {deckSlots.map((card, slotIndex) => {
+            const cardRef = deck.cardRefs?.[slotIndex];
             const evoSlotSet = isTrueMetaLayout
               ? TRUE_META_EVO_SLOTS
               : evoSlots;
@@ -508,35 +618,43 @@ export default function Builder() {
               card?.evolutionLevel === 1 || card?.evolutionLevel === 3;
             const hasHero =
               card?.evolutionLevel === 2 || card?.evolutionLevel === 3;
-            const shouldUseEvolution = isEvolutionSlot && (isTrueMetaLayout || hasEvolution);
-            const shouldUseHero = isHeroSlot && (isTrueMetaLayout || hasHero);
-            const iconUrl =
-              card &&
-                shouldUseEvolution &&
-                card.iconUrls?.evolutionMedium
+            const isMissingCard = !card && isTrueMetaLayout && cardRef != null;
+            const missingCard = isMissingCard ? resolveCatalogCard(cardRef) : null;
+            const shouldUseEvolution = isEvolutionSlot && hasEvolution;
+            const shouldUseHero = isHeroSlot && hasHero;
+            const iconUrl = card
+              ? shouldUseEvolution && card.iconUrls?.evolutionMedium
                 ? card.iconUrls.evolutionMedium
-                : card && shouldUseHero
+                : shouldUseHero
                   ? heroIconUrl(card)
-                  : card
-                    ? cardIconUrl(card)
-                    : null;
-            const cardName = card ? cardNameFallback(card) : "Empty";
-            const cardLevel = card ? normalizeCardLevel(card) : null;
-            const showUpgradeBadge = showUpgradePotential !== undefined;
+                  : cardIconUrl(card)
+              : missingCard?.iconUrls?.medium ?? null;
+            const cardName = card
+              ? cardNameFallback(card)
+              : missingCard?.name ??
+                (typeof cardRef === "string" ? cardRef : "Unknown Card");
+            const cardLevel = card ? normalizeCardLevel(card) : isMissingCard ? 0 : null;
+            const showUpgradeBadge = showUpgradeStats;
             const upgradeLevel =
               card && showUpgradeBadge ? getMaxUpgradeLevel(card) : null;
-            const upgradeHidden = showUpgradePotential === false;
+            const isFilled = Boolean(card) || isMissingCard;
             return (
               <div
-                key={`${deckKey}-${card?.id ?? "empty"}-${slotIndex}`}
-                className={`builder__slot${card ? " builder__slot--filled" : ""}`}
+                key={`${deckKey}-${card?.id ?? cardRef ?? "empty"}-${slotIndex}`}
+                className={`builder__slot${isFilled ? " builder__slot--filled" : ""}`}
               >
-                {card ? (
+                {isFilled ? (
                   <>
-                    <div className="builder__card-figure">
+                    <div
+                      className={`builder__card-figure${
+                        isMissingCard ? " builder__card-figure--missing" : ""
+                      }`}
+                    >
                       {iconUrl ? (
                         <img
-                          className="builder__card-img"
+                          className={`builder__card-img${
+                            isMissingCard ? " builder__card-img--missing" : ""
+                          }`}
                           src={iconUrl}
                           alt={cardName}
                           loading="lazy"
@@ -546,7 +664,7 @@ export default function Builder() {
                         <span className="builder__card-name">{cardName}</span>
                       )}
                     </div>
-                    <div className="builder__card-level">Lvl {cardLevel}</div>
+                    <div className="builder__card-level">Lvl {cardLevel ?? 0}</div>
                     {showUpgradeBadge && upgradeLevel != null ? (
                       <div
                         className={`builder__card-level builder__card-level--upgrade${

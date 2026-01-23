@@ -132,6 +132,12 @@
   align-items: stretch;
 }
 
+.builder__deck-header--true-meta {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
 .builder__deck-title {
   display: flex;
   align-items: center;
@@ -187,6 +193,17 @@
   gap: 24px;
 }
 
+.builder__deck--true-meta .builder__deck-meta {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.builder__deck--true-meta .builder__deck-meta--inline {
+  align-items: center;
+  gap: 12px;
+  padding-left: 6px;
+}
+
 .builder__deck-stat {
   display: grid;
   gap: 4px;
@@ -198,10 +215,11 @@
 }
 
 .builder__deck-stats {
+  --deck-stat-gap: 16px;
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
-  gap: 16px;
+  gap: var(--deck-stat-gap);
 }
 
 .builder__deck-stats--inline {
@@ -214,6 +232,38 @@
   text-align: right;
 }
 
+.builder__deck--true-meta .builder__deck-stats {
+  justify-content: flex-start;
+}
+
+.builder__deck--true-meta .builder__deck-stats--inline {
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.builder__deck--true-meta .builder__deck-stat,
+.builder__deck--true-meta .builder__deck-stat--inline {
+  text-align: left;
+}
+
+.builder__deck-stat--upgrade {
+  opacity: 1;
+  transform: translateY(0);
+  max-width: 140px;
+  max-height: 40px;
+  overflow: hidden;
+  transition: opacity 0.2s ease, transform 0.2s ease, max-width 0.25s ease,
+    max-height 0.25s ease, margin 0.25s ease;
+}
+
+.builder__deck-stat--upgrade.is-hidden {
+  opacity: 0;
+  transform: translateY(-6px);
+  max-width: 0;
+  max-height: 0;
+  margin-left: calc(-1 * var(--deck-stat-gap));
+}
+
 .builder__deck-stat-label {
   opacity: 0.8;
 }
@@ -223,6 +273,10 @@
   letter-spacing: 0.04em;
   color: var(--ink);
   font-weight: 600;
+}
+
+.builder__deck-stat--upgrade .builder__deck-stat-value {
+  color: #b091ff;
 }
 
 .builder__war-toggle {
@@ -328,6 +382,24 @@
   justify-content: center;
   border-radius: 12px;
   overflow: hidden;
+}
+
+.builder__card-figure--missing {
+  position: relative;
+  isolation: isolate;
+}
+
+.builder__card-figure--missing::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(150, 156, 172, 0.45);
+  pointer-events: none;
+}
+
+.builder__card-img--missing {
+  filter: grayscale(0.9);
+  opacity: 0.7;
 }
 
 .builder__card-name {
