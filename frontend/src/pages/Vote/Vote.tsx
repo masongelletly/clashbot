@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getRandomCards, submitVote } from "../../api/vote";
+import { getHeroIconOverride } from "../../utils/cardIconOverrides";
 import "./Vote.css";
 
 import type * as CRTypes from "../../../../shared/types/cr-api-types";
@@ -33,6 +34,12 @@ export default function Vote() {
   const getCardIconUrl = (card: CRTypes.Card, variant: CRTypes.CardVariant): string | undefined => {
     if (variant === "evo" && card.iconUrls?.evolutionMedium) {
       return card.iconUrls.evolutionMedium;
+    }
+    if (variant === "hero") {
+      const heroOverride = getHeroIconOverride(card.name);
+      if (heroOverride) {
+        return heroOverride;
+      }
     }
     if (variant === "hero" && card.iconUrls?.heroMedium) {
       return card.iconUrls.heroMedium;

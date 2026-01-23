@@ -21,6 +21,15 @@ export const trueMetaDecks: CuratedDeckDefinition[] = [
   },
 
   {
+    title: "Miner Balloon", 
+    cards:
+      [
+        "musketeer", "skeletons", "ice golem", "balloon",
+        "miner", "barbarian barrel", "giant snowball", "bomb tower"
+      ],
+  },
+
+  {
     title: "X-Bow 3.0", 
     cards:
       [
@@ -30,11 +39,11 @@ export const trueMetaDecks: CuratedDeckDefinition[] = [
   },
 
   {
-    title: "Miner Balloon", 
+    title: "Hero Knight Log Bait", 
     cards:
       [
-        "musketeer", "skeletons", "ice golem", "balloon",
-        "miner", "barbarian barrel", "giant snowball", "bomb tower"
+        "goblin barrel", "skeleton army", "knight", "princess",
+        "dart goblin", "ice spirit", "the log", "inferno tower"
       ],
   },
 
@@ -53,6 +62,33 @@ export const trueMetaDecks: CuratedDeckDefinition[] = [
       [
         "skeleton barrel", "mortar", "fireball", "knight",
         "dart goblin", "skeletons", "minions", "barbarian barrel"
+      ],
+  },
+
+  {
+    title: "Royal Recruit Swarm", 
+    cards:
+      [
+        "goblin cage", "royal recruits", "royal hogs", "flying machine",
+        "zappies", "arrows", "electro spirit", "goblin barrel"
+      ],
+  },
+
+  {
+    title: "Bridge Cycle", 
+    cards:
+      [
+        "skeleton barrel", "skeleton army", "skeleton king", "suspicious bush",
+        "dart goblin", "vines", "fire spirit", "ice spirit"
+      ],
+  },
+
+  {
+    title: "Golem Beatdown", 
+    cards:
+      [
+        "furnace", "baby dragon", "knight", "mini p.e.k.k.a",
+        "golem", "lightning", "bomber", "the log"
       ],
   },
 

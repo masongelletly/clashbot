@@ -10,6 +10,7 @@ import {
 import { Link, useLocation } from "react-router-dom";
 import ActivePlayerBadge from "../../components/ActivePlayerBadge/ActivePlayerBadge";
 import { useActivePlayer } from "../../state/ActivePlayerContext";
+import { getHeroIconOverride } from "../../utils/cardIconOverrides";
 import {
   buildCuratedDecks,
   buildWinConditionDecks,
@@ -370,6 +371,10 @@ export default function Builder() {
       // TEMP: hero wizard is missing a hero iconUrl upstream, so fall back to base.
       return cardIconUrl(card);
     }
+    const heroOverride = getHeroIconOverride(cardName);
+    if (heroOverride) {
+      return heroOverride;
+    }
     return card.iconUrls?.heroMedium ?? cardIconUrl(card);
   };
   const getAverageLevel = (deck: DisplayDeck): number | null => {
@@ -420,13 +425,16 @@ export default function Builder() {
     const showAvgLevelStat = avgLevel != null;
     const showAvgElixirStat = showAvgElixir;
     const showMeta = Boolean(description) || showAvgLevelStat || showAvgElixirStat;
+    const isTrueMetaLayout = slotLayout === "true-meta";
 
     return (
       <article
         key={deckKey}
         className={`builder__deck${
           deckIndex === currentIndex ? " is-active" : ""
-        }${variant === "war" ? " builder__deck--war" : ""}`}
+        }${variant === "war" ? " builder__deck--war" : ""}${
+          isTrueMetaLayout ? " builder__deck--true-meta" : ""
+        }`}
       >
         <header
           className={`builder__deck-header${
@@ -488,7 +496,6 @@ export default function Builder() {
 
         <div className="builder__deck-grid" aria-label={ariaLabel}>
           {deckSlots.map((card, slotIndex) => {
-            const isTrueMetaLayout = slotLayout === "true-meta";
             const evoSlotSet = isTrueMetaLayout
               ? TRUE_META_EVO_SLOTS
               : evoSlots;

@@ -138,6 +138,10 @@
   flex-wrap: wrap;
 }
 
+.builder__deck--true-meta .builder__deck-title {
+  padding: 6px 0 0 6px;
+}
+
 .builder__deck-label {
   font-size: 1.1rem;
   font-weight: 700;
