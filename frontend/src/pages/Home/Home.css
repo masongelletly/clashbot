@@ -416,6 +416,12 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  width: 100%;
+}
+
+.home__action-row > * {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .home__results-header {
