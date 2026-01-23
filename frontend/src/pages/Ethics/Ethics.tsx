@@ -64,6 +64,7 @@ export default function Ethics() {
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
   const scoreCardRef = useRef<HTMLElement | null>(null);
+  const shareCaptureRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!displayPlayer?.playerTag) {
@@ -71,19 +72,42 @@ export default function Ethics() {
       return;
     }
 
+    console.debug("[Ethics] Fetching ethics data", {
+      playerTag: displayPlayer.playerTag
+    });
     setShareMessage(null);
     setLoading(true);
     setError(null);
     getEthicsScore(displayPlayer.playerTag)
       .then((data) => {
+        console.debug("[Ethics] Ethics data loaded", {
+          ethicsScore: data.ethicsScore,
+          deckScore: data.deckScore,
+          donationScore: data.donationScore
+        });
         setEthicsData(data);
         setLoading(false);
       })
       .catch((err) => {
+        console.error("[Ethics] Ethics data error", err);
         setError(err.message || "Failed to load ethics data");
         setLoading(false);
       });
   }, [displayPlayer?.playerTag]);
+
+  useEffect(() => {
+    console.debug("[Ethics] Share button render check", {
+      hasEthicsData: Boolean(ethicsData),
+      hasScoreCard: Boolean(scoreCardRef.current),
+      hasShareCapture: Boolean(shareCaptureRef.current),
+      hasNavigatorShare: typeof navigator !== "undefined" && typeof navigator.share === "function",
+      canShareFiles:
+        typeof navigator !== "undefined" &&
+        typeof navigator.canShare === "function" &&
+        navigator.canShare({ files: [] }),
+      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "n/a"
+    });
+  }, [ethicsData]);
 
   const gradientPosition = ethicsData ? calculateGradientPosition(ethicsData.ethicsScore) : 50;
   const donationRatioDisplay = ethicsData
@@ -95,20 +119,30 @@ export default function Ethics() {
     : null;
 
   const handleShare = async () => {
-    if (!ethicsData || !scoreCardRef.current || sharing) {
+    if (!ethicsData || !scoreCardRef.current || !shareCaptureRef.current || sharing) {
+      console.debug("[Ethics] Share blocked", {
+        hasEthicsData: Boolean(ethicsData),
+        hasScoreCard: Boolean(scoreCardRef.current),
+        hasShareCapture: Boolean(shareCaptureRef.current),
+        sharing
+      });
       return;
     }
 
+    console.debug("[Ethics] Share invoked", {
+      hasNavigatorShare: typeof navigator !== "undefined" && typeof navigator.share === "function",
+      canShareFiles: typeof navigator !== "undefined" && typeof navigator.canShare === "function"
+    });
     setSharing(true);
     setShareMessage(null);
 
     const shareBaseLink = "https://www.clashbot.wtf";
     const shareName = displayPlayer?.playerName ?? displayPlayer?.playerTag ?? "Player";
     const shareTitle = `${shareName} Ethics Score`;
-    const shareText = `${shareName} Ethics Score: ${ethicsData.ethicsScore.toFixed(2)}\n${shareBaseLink}`;
     const shareUrl = shareBaseLink;
 
     if (typeof navigator === "undefined" || typeof navigator.share !== "function") {
+      console.warn("[Ethics] navigator.share unavailable");
       if (navigator?.clipboard?.writeText && shareUrl) {
         try {
           await navigator.clipboard.writeText(shareUrl);
@@ -127,8 +161,12 @@ export default function Ethics() {
       let shareFile: File | null = null;
       try {
         const { default: html2canvas } = await import("html2canvas");
-        const canvas = await html2canvas(scoreCardRef.current, {
-          backgroundColor: null,
+        const cardBackground = getComputedStyle(scoreCardRef.current).backgroundColor;
+        console.debug("[Ethics] Capturing share image", {
+          background: cardBackground
+        });
+        const canvas = await html2canvas(shareCaptureRef.current, {
+          backgroundColor: cardBackground || "#12102a",
           useCORS: true,
           scale: Math.min(window.devicePixelRatio || 1, 2),
           ignoreElements: (element) =>
@@ -158,12 +196,17 @@ export default function Ethics() {
 
       const shareData: ShareData = {
         title: shareTitle,
-        text: shareText,
         url: shareUrl
       };
 
       if (shareFile && navigator.canShare?.({ files: [shareFile] })) {
         shareData.files = [shareFile];
+        console.debug("[Ethics] Sharing with image attachment", {
+          fileName: shareFile.name,
+          fileSize: shareFile.size
+        });
+      } else {
+        console.debug("[Ethics] Sharing without image attachment");
       }
 
       await navigator.share(shareData);
@@ -237,43 +280,45 @@ export default function Ethics() {
                   {shareMessage}
                 </div>
               )}
-              <div className="ethics__score-display">
-                <div className="ethics__score-value">{ethicsData.ethicsScore.toFixed(2)}</div>
-                <div className="ethics__score-breakdown">
-                  <span style={deckScoreColor ? { color: deckScoreColor } : undefined}>
-                    Deck: {ethicsData.deckScore.toFixed(2)}
-                  </span>
-                  <span 
-                    style={donationScoreColor ? { color: donationScoreColor } : undefined}
-                  >
-                    Donations: {ethicsData.donationScore > 0 ? '+' : ''}{ethicsData.donationScore.toFixed(2)}
-                  </span>
+              <div className="ethics__share-capture" ref={shareCaptureRef}>
+                <div className="ethics__score-display">
+                  <div className="ethics__score-value">{ethicsData.ethicsScore.toFixed(2)}</div>
+                  <div className="ethics__score-breakdown">
+                    <span style={deckScoreColor ? { color: deckScoreColor } : undefined}>
+                      Deck: {ethicsData.deckScore.toFixed(2)}
+                    </span>
+                    <span 
+                      style={donationScoreColor ? { color: donationScoreColor } : undefined}
+                    >
+                      Donations: {ethicsData.donationScore > 0 ? '+' : ''}{ethicsData.donationScore.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="ethics__donation-info">
+                    <span>
+                      {ethicsData.donations} donated / {ethicsData.donationsReceived} received
+                      {(ethicsData.donations > 0 || ethicsData.donationsReceived > 0) && (
+                        <span className="ethics__donation-ratio">
+                          {' '}({donationRatioDisplay} ratio)
+                        </span>
+                      )}
+                    </span>
+                  </div>
                 </div>
-                <div className="ethics__donation-info">
-                  <span>
-                    {ethicsData.donations} donated / {ethicsData.donationsReceived} received
-                    {(ethicsData.donations > 0 || ethicsData.donationsReceived > 0) && (
-                      <span className="ethics__donation-ratio">
-                        {' '}({donationRatioDisplay} ratio)
-                      </span>
-                    )}
-                  </span>
-                </div>
-              </div>
 
-              {/* Gradient Line */}
-              <div className="ethics__gradient-container">
-                <div className="ethics__gradient-line">
-                  <div
-                    className="ethics__gradient-dot"
-                    style={{ left: `${gradientPosition}%` }}
-                    title={`Ethics Score: ${ethicsData.ethicsScore.toFixed(2)}`}
-                  />
-                </div>
-                <div className="ethics__gradient-labels">
-                  <span>Unethical</span>
-                  <span>Neutral</span>
-                  <span>Ethical</span>
+                {/* Gradient Line */}
+                <div className="ethics__gradient-container">
+                  <div className="ethics__gradient-line">
+                    <div
+                      className="ethics__gradient-dot"
+                      style={{ left: `${gradientPosition}%` }}
+                      title={`Ethics Score: ${ethicsData.ethicsScore.toFixed(2)}`}
+                    />
+                  </div>
+                  <div className="ethics__gradient-labels">
+                    <span>Unethical</span>
+                    <span>Neutral</span>
+                    <span>Ethical</span>
+                  </div>
                 </div>
               </div>
 
