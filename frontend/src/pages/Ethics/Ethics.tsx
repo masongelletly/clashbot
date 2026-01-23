@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import ActivePlayerBadge from "../../components/ActivePlayerBadge/ActivePlayerBadge";
 import { useActivePlayer } from "../../state/ActivePlayerContext";
-import { getEthicsOverview, getEthicsScore } from "../../api/ethics";
+import { getEthicsScore } from "../../api/ethics";
 import { normalizeCardLevel } from "../../utils/deckBuilder";
 import "./Ethics.css";
 
@@ -51,51 +51,25 @@ function scoreColor(score: number): string | null {
   return null;
 }
 
-const OVERVIEW_FALLBACK = "Feeling weird, can't talk right now.";
-
-function isOverviewUsable(text: string | null): text is string {
-  if (!text) {
-    return false;
-  }
-  const trimmed = text.trim();
-  if (trimmed.length < 10) {
-    return false;
-  }
-  if (/^(null|undefined|nan)$/i.test(trimmed)) {
-    return false;
-  }
-  return true;
-}
-
 export default function Ethics() {
   const location = useLocation();
   const state = location.state as EthicsLocationState | null;
   const player = state?.player;
   const { player: activePlayer } = useActivePlayer();
   const displayPlayer = player ?? activePlayer;
-  const playerTag = displayPlayer?.playerTag;
 
   const [ethicsData, setEthicsData] = useState<CRTypes.EthicsCalculationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [overview, setOverview] = useState<string | null>(null);
-  const [overviewLoading, setOverviewLoading] = useState(false);
-  const [overviewError, setOverviewError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!displayPlayer?.playerTag) {
       setEthicsData(null);
-      setOverview(null);
-      setOverviewError(null);
-      setOverviewLoading(false);
       return;
     }
 
     setLoading(true);
     setError(null);
-    setOverview(null);
-    setOverviewError(null);
-    setOverviewLoading(false);
     getEthicsScore(displayPlayer.playerTag)
       .then((data) => {
         setEthicsData(data);
@@ -107,29 +81,6 @@ export default function Ethics() {
       });
   }, [displayPlayer?.playerTag]);
 
-  useEffect(() => {
-    if (!ethicsData || !playerTag) {
-      setOverview(null);
-      setOverviewError(null);
-      setOverviewLoading(false);
-      return;
-    }
-
-    setOverviewLoading(true);
-    setOverviewError(null);
-    getEthicsOverview({
-      playerTag,
-    })
-      .then((data) => {
-        setOverview(data.overview);
-        setOverviewLoading(false);
-      })
-      .catch((err) => {
-        setOverviewError(err.message || "Failed to load Clashbot overview");
-        setOverviewLoading(false);
-      });
-  }, [ethicsData, playerTag]);
-
   const gradientPosition = ethicsData ? calculateGradientPosition(ethicsData.ethicsScore) : 50;
   const donationRatioDisplay = ethicsData
     ? formatDonationRatio(ethicsData.donations, ethicsData.donationsReceived)
@@ -138,12 +89,6 @@ export default function Ethics() {
   const donationScoreColor = ethicsData
     ? scoreColor(ethicsData.donationScore)
     : null;
-  const overviewCopy = overviewLoading
-    ? "Clashbot is thinking..."
-    : overviewError || !isOverviewUsable(overview)
-      ? OVERVIEW_FALLBACK
-      : overview;
-  const overviewHasIssue = Boolean(overviewError) || (!overviewLoading && !isOverviewUsable(overview));
 
   return (
     <div className="page ethics">
@@ -182,12 +127,6 @@ export default function Ethics() {
           <>
             <section className="page__card ethics__card">
               <h2>Ethics Score</h2>
-              <div className="ethics__overview" aria-live="polite">
-                <div className="ethics__overview-label">Clashbot AI</div>
-                <p className={overviewHasIssue ? "ethics__overview-text ethics__overview-text--error" : "ethics__overview-text"}>
-                  {overviewCopy}
-                </p>
-              </div>
               <div className="ethics__score-display">
                 <div className="ethics__score-value">{ethicsData.ethicsScore.toFixed(2)}</div>
                 <div className="ethics__score-breakdown">

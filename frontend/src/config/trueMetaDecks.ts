@@ -7,7 +7,7 @@ export const trueMetaDecks: CuratedDeckDefinition[] = [
     cards:
       [
         "ice spirit", "cannon", "musketeer", "ice golem",
-        "fireball", "cannon", "the log", "skeletons"
+        "fireball", "hog rider", "the log", "skeletons"
       ],
   },
 
