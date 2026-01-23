@@ -55,6 +55,19 @@ export type DeckOption = {
   averageElixir: number;
 };
 
+export type CuratedDeckCard = number | string;
+
+export type CuratedDeckDefinition = {
+  title: string;
+  cards: CuratedDeckCard[];
+};
+
+export type CuratedDeckOption = {
+  title: string;
+  deck: Array<PlayerCard | null>;
+  averageElixir: number;
+};
+
 export type WarDeckStrategy = "balanced" | "stacked";
 
 export type WarDeckOptions = {
@@ -234,6 +247,50 @@ function calculateAverageElixir(cards: Array<PlayerCard | null>): number {
   }
   const total = filled.reduce((sum, card) => sum + getElixirCost(card), 0);
   return Number((total / filled.length).toFixed(1));
+}
+
+export function buildCuratedDecks(
+  cards: PlayerCard[],
+  definitions: CuratedDeckDefinition[]
+): CuratedDeckOption[] {
+  if (definitions.length === 0) {
+    return [];
+  }
+
+  const cardsById = new Map<number, PlayerCard>();
+  const cardsByName = new Map<string, PlayerCard>();
+
+  for (const card of cards) {
+    cardsById.set(card.id, card);
+    const normalizedName = normalizeCardName(getRawCardName(card));
+    if (normalizedName && !cardsByName.has(normalizedName)) {
+      cardsByName.set(normalizedName, card);
+    }
+  }
+
+  const resolveCard = (reference: CuratedDeckCard): PlayerCard | null => {
+    if (typeof reference === "number") {
+      return cardsById.get(reference) ?? null;
+    }
+    const normalizedName = normalizeCardName(reference);
+    return cardsByName.get(normalizedName) ?? null;
+  };
+
+  return definitions.map((definition) => {
+    const deckSlots: Array<PlayerCard | null> = Array.from(
+      { length: DECK_SLOT_COUNT },
+      () => null
+    );
+    const cardRefs = definition.cards.slice(0, DECK_SLOT_COUNT);
+    cardRefs.forEach((reference, index) => {
+      deckSlots[index] = resolveCard(reference);
+    });
+    return {
+      title: definition.title,
+      deck: deckSlots,
+      averageElixir: calculateAverageElixir(deckSlots),
+    };
+  });
 }
 
 const getCardWinRate = (card: PlayerCard): number => {

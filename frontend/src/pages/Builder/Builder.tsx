@@ -10,7 +10,9 @@ import {
 import { Link, useLocation } from "react-router-dom";
 import ActivePlayerBadge from "../../components/ActivePlayerBadge/ActivePlayerBadge";
 import { useActivePlayer } from "../../state/ActivePlayerContext";
+import { getHeroIconOverride } from "../../utils/cardIconOverrides";
 import {
+  buildCuratedDecks,
   buildWinConditionDecks,
   buildWarDecks,
   normalizeCardLevel,
@@ -18,6 +20,11 @@ import {
   type WarDeckStrategy,
   type PreferredWinCondition,
 } from "../../utils/deckBuilder";
+import {
+  cardUpgradeCounts,
+  type CardUpgradeRarity,
+} from "../../config/cardUpgradeCounts";
+import { trueMetaDecks as trueMetaDefinitions } from "../../config/trueMetaDecks";
 import "./Builder.css";
 
 import type * as CRTypes from "../../../../shared/types/cr-api-types";
@@ -27,6 +34,63 @@ type PlayerCard = CRTypes.PlayerProfileResponse["cards"][number];
 
 type BuilderLocationState = {
   player?: PlayerMatch;
+};
+
+const TRUE_META_EVO_SLOTS = new Set([0, 1]);
+const TRUE_META_HERO_SLOTS = new Set([2, 3]);
+
+const NORMALIZED_MAX_LEVEL = cardUpgradeCounts.levels.length
+  ? Math.max(...cardUpgradeCounts.levels)
+  : 16;
+
+const RARITY_BY_OFFSET: Record<number, CardUpgradeRarity> = {
+  0: "common",
+  2: "rare",
+  5: "epic",
+  8: "legendary",
+  10: "champion",
+};
+
+const getUpgradeRarity = (card: PlayerCard): CardUpgradeRarity | null => {
+  const rarity = card.rarity?.toLowerCase();
+  if (rarity && rarity in cardUpgradeCounts.rarities) {
+    return rarity as CardUpgradeRarity;
+  }
+  if (typeof card.maxLevel === "number") {
+    const offset = NORMALIZED_MAX_LEVEL - card.maxLevel;
+    return RARITY_BY_OFFSET[offset] ?? null;
+  }
+  return null;
+};
+
+const getMaxUpgradeLevel = (card: PlayerCard): number => {
+  const normalizedLevel = normalizeCardLevel(card);
+  const rarity = getUpgradeRarity(card);
+  if (!rarity) {
+    return normalizedLevel;
+  }
+  const rarityCounts = cardUpgradeCounts.rarities[rarity];
+  let remainingCount = Math.max(0, Math.floor(card.count ?? 0));
+  let level = Math.min(normalizedLevel, NORMALIZED_MAX_LEVEL);
+  for (
+    let nextLevel = level + 1;
+    nextLevel <= NORMALIZED_MAX_LEVEL;
+    nextLevel += 1
+  ) {
+    const cost = rarityCounts[String(nextLevel)];
+    if (typeof cost !== "number") {
+      break;
+    }
+    if (!Number.isFinite(cost)) {
+      break;
+    }
+    if (remainingCount < cost) {
+      break;
+    }
+    remainingCount -= cost;
+    level = nextLevel;
+  }
+  return level;
 };
 
 const WIN_CONDITION_CONTENT: Record<
@@ -52,6 +116,11 @@ const WIN_CONDITION_CONTENT: Record<
 };
 
 const DECK_SLOT_COUNT = 8;
+
+type DisplayDeck = {
+  deck: Array<PlayerCard | null>;
+  averageElixir: number;
+};
 
 type DeckSwipeState = {
   activeIndex: number;
@@ -248,6 +317,7 @@ export default function Builder() {
 
   const deckCount = deckData.decks.length;
   const [spreadLove, setSpreadLove] = useState(true);
+  const [showMaxLevels, setShowMaxLevels] = useState(false);
   const warStrategy: WarDeckStrategy = spreadLove ? "balanced" : "stacked";
   const warDecks = useMemo<DeckOption[]>(() => {
     if (!playerProfile) {
@@ -260,8 +330,17 @@ export default function Builder() {
     }, { strategy: warStrategy });
   }, [playerProfile, warStrategy]);
 
+  const trueMetaDecks = useMemo(() => {
+    if (!playerProfile || trueMetaDefinitions.length === 0) {
+      return [];
+    }
+    return buildCuratedDecks(playerProfile.cards, trueMetaDefinitions);
+  }, [playerProfile, trueMetaDefinitions]);
+
+  const trueMetaDeckCount = trueMetaDecks.length;
   const warDeckCount = warDecks.length;
   const optimalSwipe = useDeckSwipe(deckCount, deckData.optimalIndex);
+  const trueMetaSwipe = useDeckSwipe(trueMetaDeckCount, 0);
   const warSwipe = useDeckSwipe(warDeckCount, 0);
 
   const cardNameFallback = (card: PlayerCard) => {
@@ -292,9 +371,13 @@ export default function Builder() {
       // TEMP: hero wizard is missing a hero iconUrl upstream, so fall back to base.
       return cardIconUrl(card);
     }
+    const heroOverride = getHeroIconOverride(cardName);
+    if (heroOverride) {
+      return heroOverride;
+    }
     return card.iconUrls?.heroMedium ?? cardIconUrl(card);
   };
-  const getAverageLevel = (deck: DeckOption): number | null => {
+  const getAverageLevel = (deck: DisplayDeck): number | null => {
     const filled = deck.deck.filter((card): card is PlayerCard => Boolean(card));
     if (filled.length === 0) {
       return null;
@@ -311,11 +394,15 @@ export default function Builder() {
     chip,
     avgLevel,
     inlineStats,
+    inlineHeader = inlineStats,
+    showUpgradePotential,
+    showAvgElixir = true,
+    slotLayout,
     variant,
     ariaLabel,
     deckKey,
   }: {
-    deck: DeckOption;
+    deck: DisplayDeck;
     deckIndex: number;
     activeIndex: number;
     label: string;
@@ -323,6 +410,10 @@ export default function Builder() {
     chip?: string;
     avgLevel?: number | null;
     inlineStats?: boolean;
+    inlineHeader?: boolean;
+    showUpgradePotential?: boolean;
+    showAvgElixir?: boolean;
+    slotLayout?: "true-meta";
     variant?: "war";
     ariaLabel: string;
     deckKey: string;
@@ -331,89 +422,110 @@ export default function Builder() {
       { length: DECK_SLOT_COUNT },
       (_, slotIndex) => deck.deck[slotIndex] ?? null
     );
+    const showAvgLevelStat = avgLevel != null;
+    const showAvgElixirStat = showAvgElixir;
+    const showMeta = Boolean(description) || showAvgLevelStat || showAvgElixirStat;
+    const isTrueMetaLayout = slotLayout === "true-meta";
 
     return (
       <article
         key={deckKey}
         className={`builder__deck${
           deckIndex === currentIndex ? " is-active" : ""
-        }${variant === "war" ? " builder__deck--war" : ""}`}
+        }${variant === "war" ? " builder__deck--war" : ""}${
+          isTrueMetaLayout ? " builder__deck--true-meta" : ""
+        }`}
       >
         <header
           className={`builder__deck-header${
-            inlineStats ? " builder__deck-header--inline" : ""
+            inlineHeader ? " builder__deck-header--inline" : ""
           }`}
         >
           <div className="builder__deck-title">
             <span className="builder__deck-label">{label}</span>
             {chip ? <span className="builder__deck-chip">{chip}</span> : null}
           </div>
-          <div
-            className={`builder__deck-meta${
-              inlineStats ? " builder__deck-meta--inline" : ""
-            }`}
-          >
-            {description ? (
-              <p
-                className={`builder__deck-description${
-                  inlineStats ? " builder__deck-description--inline" : ""
-                }`}
-              >
-                {description}
-              </p>
-            ) : null}
+          {showMeta ? (
             <div
-              className={`builder__deck-stats${
-                inlineStats ? " builder__deck-stats--inline" : ""
+              className={`builder__deck-meta${
+                inlineStats ? " builder__deck-meta--inline" : ""
               }`}
             >
-              {avgLevel != null ? (
-                <div
-                  className={`builder__deck-stat${
-                    inlineStats ? " builder__deck-stat--inline" : ""
+              {description ? (
+                <p
+                  className={`builder__deck-description${
+                    inlineStats ? " builder__deck-description--inline" : ""
                   }`}
                 >
-                  <span className="builder__deck-stat-label">Avg level</span>
-                  <span className="builder__deck-stat-value">
-                    {avgLevel.toFixed(1)}
-                  </span>
-                </div>
+                  {description}
+                </p>
               ) : null}
               <div
-                className={`builder__deck-stat${
-                  inlineStats ? " builder__deck-stat--inline" : ""
+                className={`builder__deck-stats${
+                  inlineStats ? " builder__deck-stats--inline" : ""
                 }`}
               >
-                <span className="builder__deck-stat-label">Avg elixir</span>
-                <span className="builder__deck-stat-value">
-                  {deck.averageElixir ? deck.averageElixir.toFixed(1) : "—"}
-                </span>
+                {showAvgLevelStat ? (
+                  <div
+                    className={`builder__deck-stat${
+                      inlineStats ? " builder__deck-stat--inline" : ""
+                    }`}
+                  >
+                    <span className="builder__deck-stat-label">Avg level</span>
+                    <span className="builder__deck-stat-value">
+                      {avgLevel?.toFixed(1)}
+                    </span>
+                  </div>
+                ) : null}
+                {showAvgElixirStat ? (
+                  <div
+                    className={`builder__deck-stat${
+                      inlineStats ? " builder__deck-stat--inline" : ""
+                    }`}
+                  >
+                    <span className="builder__deck-stat-label">Avg elixir</span>
+                    <span className="builder__deck-stat-value">
+                      {deck.averageElixir ? deck.averageElixir.toFixed(1) : "—"}
+                    </span>
+                  </div>
+                ) : null}
               </div>
             </div>
-          </div>
+          ) : null}
         </header>
 
         <div className="builder__deck-grid" aria-label={ariaLabel}>
           {deckSlots.map((card, slotIndex) => {
-            const isEvolutionSlot = evoSlots.has(slotIndex);
-            const isHeroSlot = heroSlots.has(slotIndex);
+            const evoSlotSet = isTrueMetaLayout
+              ? TRUE_META_EVO_SLOTS
+              : evoSlots;
+            const heroSlotSet = isTrueMetaLayout
+              ? TRUE_META_HERO_SLOTS
+              : heroSlots;
+            const isEvolutionSlot = evoSlotSet.has(slotIndex);
+            const isHeroSlot = heroSlotSet.has(slotIndex);
             const hasEvolution =
               card?.evolutionLevel === 1 || card?.evolutionLevel === 3;
             const hasHero =
               card?.evolutionLevel === 2 || card?.evolutionLevel === 3;
+            const shouldUseEvolution = isEvolutionSlot && (isTrueMetaLayout || hasEvolution);
+            const shouldUseHero = isHeroSlot && (isTrueMetaLayout || hasHero);
             const iconUrl =
               card &&
-                isEvolutionSlot &&
-                hasEvolution &&
+                shouldUseEvolution &&
                 card.iconUrls?.evolutionMedium
                 ? card.iconUrls.evolutionMedium
-                : card && isHeroSlot && hasHero
+                : card && shouldUseHero
                   ? heroIconUrl(card)
                   : card
                     ? cardIconUrl(card)
                     : null;
             const cardName = card ? cardNameFallback(card) : "Empty";
             const cardLevel = card ? normalizeCardLevel(card) : null;
+            const showUpgradeBadge = showUpgradePotential !== undefined;
+            const upgradeLevel =
+              card && showUpgradeBadge ? getMaxUpgradeLevel(card) : null;
+            const upgradeHidden = showUpgradePotential === false;
             return (
               <div
                 key={`${deckKey}-${card?.id ?? "empty"}-${slotIndex}`}
@@ -435,6 +547,17 @@ export default function Builder() {
                       )}
                     </div>
                     <div className="builder__card-level">Lvl {cardLevel}</div>
+                    {showUpgradeBadge && upgradeLevel != null ? (
+                      <div
+                        className={`builder__card-level builder__card-level--upgrade${
+                          upgradeHidden ? " is-hidden" : ""
+                        }`}
+                        title={`Up to Lvl ${upgradeLevel}`}
+                        aria-hidden={upgradeHidden || undefined}
+                      >
+                        Max {upgradeLevel}
+                      </div>
+                    ) : null}
                   </>
                 ) : (
                   <span className="builder__card-empty">Empty</span>
@@ -455,7 +578,6 @@ export default function Builder() {
       <div className="page__layout">
         <header className="page__header">
           <div>
-            <span className="page__eyebrow">Deck builder</span>
             <h1 className="page__title">Builder</h1>
             <p className="page__subtitle">
               Let's help you build unstoppable decks.
@@ -469,67 +591,77 @@ export default function Builder() {
           </div>
         </header>
 
-        <section className="builder__swipe-shell">
-          <div className="builder__swipe-header">
-            <div>
-              <h2>Best Decks</h2>
-              <p className="builder__copy">
-                Explore your personalized top decks by win condition
-              </p>
-            </div>
-          </div>
-
-          {deckCount > 0 ? (
-            <>
-              <div
-                className={`builder__swipe${optimalSwipe.isDragging ? " builder__swipe--dragging" : ""}`}
-                ref={optimalSwipe.swipeRef}
-                onPointerDown={optimalSwipe.handlePointerDown}
-                onPointerMove={optimalSwipe.handlePointerMove}
-                onPointerUp={optimalSwipe.handlePointerEnd}
-                onPointerCancel={optimalSwipe.handlePointerEnd}
-                role="region"
-                aria-roledescription="deck carousel"
-                aria-label="Swipeable decks by win condition"
-              >
-                <div
-                  className={`builder__swipe-track${optimalSwipe.isDragging ? " is-dragging" : ""}`}
-                  style={{ transform: `translateX(${optimalSwipe.trackOffset}px)` }}
-                >
-                  {deckData.decks.map((deck, deckIndex) => {
-                    const deckContent = WIN_CONDITION_CONTENT[deck.winConditionType];
-                    const isOptimal = deckIndex === deckData.optimalIndex;
-                    return renderDeckCard({
-                      deck,
-                      deckIndex,
-                      activeIndex: optimalSwipe.activeIndex,
-                      label: deckContent.title,
-                      description: deckContent.description,
-                      chip: isOptimal ? "Optimal" : undefined,
-                      inlineStats: true,
-                      ariaLabel: `${deckContent.title} deck slots`,
-                      deckKey: `optimal-${deck.winConditionType}`,
-                    });
-                  })}
-                </div>
+        {trueMetaDeckCount > 0 && (
+          <section className="builder__swipe-shell">
+            <div className="builder__swipe-header">
+              <div>
+                <h2>True Meta</h2>
+                <p className="builder__copy">
+                  Very strong decks in the current meta. Potential max level shows what
+                  level you <strong><em>could</em></strong> upgrade the card to,
+                  ignoring gold and magic items
+                </p>
               </div>
+              <button
+                type="button"
+                className={`builder__max-toggle${
+                  showMaxLevels ? " is-active" : ""
+                }`}
+                onClick={() => setShowMaxLevels((prev) => !prev)}
+                aria-pressed={showMaxLevels}
+              >
+                potential max level
+              </button>
+            </div>
 
-              {deckCount > 1 && (
-                <div className="builder__swipe-dots" aria-hidden="true">
-                  {deckData.decks.map((deck, deckIndex) => (
-                    <span
-                      key={`${deck.winConditionType}-${deckIndex}`}
-                      className={`builder__swipe-dot${deckIndex === optimalSwipe.activeIndex ? " is-active" : ""
-                        }`}
-                    />
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="page__player">{emptyStateCopy}</div>
-          )}
-        </section>
+            <div
+              className={`builder__swipe${trueMetaSwipe.isDragging ? " builder__swipe--dragging" : ""}`}
+              ref={trueMetaSwipe.swipeRef}
+              onPointerDown={trueMetaSwipe.handlePointerDown}
+              onPointerMove={trueMetaSwipe.handlePointerMove}
+              onPointerUp={trueMetaSwipe.handlePointerEnd}
+              onPointerCancel={trueMetaSwipe.handlePointerEnd}
+              role="region"
+              aria-roledescription="deck carousel"
+              aria-label="Swipeable true meta decks"
+            >
+              <div
+                className={`builder__swipe-track${trueMetaSwipe.isDragging ? " is-dragging" : ""}`}
+                style={{ transform: `translateX(${trueMetaSwipe.trackOffset}px)` }}
+              >
+                {trueMetaDecks.map((deck, deckIndex) =>
+                  renderDeckCard({
+                    deck,
+                    deckIndex,
+                    activeIndex: trueMetaSwipe.activeIndex,
+                    label: deck.title,
+                    avgLevel: getAverageLevel(deck),
+                    inlineStats: true,
+                    inlineHeader: false,
+                    showUpgradePotential: showMaxLevels,
+                    showAvgElixir: false,
+                    slotLayout: "true-meta",
+                    ariaLabel: `${deck.title} deck slots`,
+                    deckKey: `true-meta-${deckIndex}`,
+                  })
+                )}
+              </div>
+            </div>
+
+            {trueMetaDeckCount > 1 && (
+              <div className="builder__swipe-dots" aria-hidden="true">
+                {trueMetaDecks.map((deck, deckIndex) => (
+                  <span
+                    key={`true-meta-${deck.title}-${deckIndex}`}
+                    className={`builder__swipe-dot${
+                      deckIndex === trueMetaSwipe.activeIndex ? " is-active" : ""
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {deckCount > 0 && (
           <section className="builder__swipe-shell">
@@ -606,6 +738,68 @@ export default function Builder() {
             )}
           </section>
         )}
+
+        <section className="builder__swipe-shell">
+          <div className="builder__swipe-header">
+            <div>
+              <h2>Your Win Conditions</h2>
+              <p className="builder__copy">
+                Find a different way to play your game
+              </p>
+            </div>
+          </div>
+
+          {deckCount > 0 ? (
+            <>
+              <div
+                className={`builder__swipe${optimalSwipe.isDragging ? " builder__swipe--dragging" : ""}`}
+                ref={optimalSwipe.swipeRef}
+                onPointerDown={optimalSwipe.handlePointerDown}
+                onPointerMove={optimalSwipe.handlePointerMove}
+                onPointerUp={optimalSwipe.handlePointerEnd}
+                onPointerCancel={optimalSwipe.handlePointerEnd}
+                role="region"
+                aria-roledescription="deck carousel"
+                aria-label="Swipeable decks by win condition"
+              >
+                <div
+                  className={`builder__swipe-track${optimalSwipe.isDragging ? " is-dragging" : ""}`}
+                  style={{ transform: `translateX(${optimalSwipe.trackOffset}px)` }}
+                >
+                  {deckData.decks.map((deck, deckIndex) => {
+                    const deckContent = WIN_CONDITION_CONTENT[deck.winConditionType];
+                    const isOptimal = deckIndex === deckData.optimalIndex;
+                    return renderDeckCard({
+                      deck,
+                      deckIndex,
+                      activeIndex: optimalSwipe.activeIndex,
+                      label: deckContent.title,
+                      description: deckContent.description,
+                      chip: isOptimal ? "Optimal" : undefined,
+                      inlineStats: true,
+                      ariaLabel: `${deckContent.title} deck slots`,
+                      deckKey: `optimal-${deck.winConditionType}`,
+                    });
+                  })}
+                </div>
+              </div>
+
+              {deckCount > 1 && (
+                <div className="builder__swipe-dots" aria-hidden="true">
+                  {deckData.decks.map((deck, deckIndex) => (
+                    <span
+                      key={`${deck.winConditionType}-${deckIndex}`}
+                      className={`builder__swipe-dot${deckIndex === optimalSwipe.activeIndex ? " is-active" : ""
+                        }`}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="page__player">{emptyStateCopy}</div>
+          )}
+        </section>
       </div>
     </div>
   );
