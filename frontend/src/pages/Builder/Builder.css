@@ -468,6 +468,7 @@
   display: flex;
   justify-content: center;
   gap: 8px;
+  margin-right: 12vw;
 }
 
 .builder__swipe-dot {
