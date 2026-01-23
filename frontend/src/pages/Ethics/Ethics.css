@@ -16,6 +16,13 @@
   will-change: opacity, transform;
 }
 
+.ethics__share-capture {
+  display: grid;
+  gap: 12px;
+  padding-inline: 20px;
+  margin-inline: -20px;
+}
+
 .ethics__card-header {
   display: flex;
   align-items: center;
