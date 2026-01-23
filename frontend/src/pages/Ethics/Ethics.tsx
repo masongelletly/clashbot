@@ -72,42 +72,19 @@ export default function Ethics() {
       return;
     }
 
-    console.debug("[Ethics] Fetching ethics data", {
-      playerTag: displayPlayer.playerTag
-    });
     setShareMessage(null);
     setLoading(true);
     setError(null);
     getEthicsScore(displayPlayer.playerTag)
       .then((data) => {
-        console.debug("[Ethics] Ethics data loaded", {
-          ethicsScore: data.ethicsScore,
-          deckScore: data.deckScore,
-          donationScore: data.donationScore
-        });
         setEthicsData(data);
         setLoading(false);
       })
       .catch((err) => {
-        console.error("[Ethics] Ethics data error", err);
         setError(err.message || "Failed to load ethics data");
         setLoading(false);
       });
   }, [displayPlayer?.playerTag]);
-
-  useEffect(() => {
-    console.debug("[Ethics] Share button render check", {
-      hasEthicsData: Boolean(ethicsData),
-      hasScoreCard: Boolean(scoreCardRef.current),
-      hasShareCapture: Boolean(shareCaptureRef.current),
-      hasNavigatorShare: typeof navigator !== "undefined" && typeof navigator.share === "function",
-      canShareFiles:
-        typeof navigator !== "undefined" &&
-        typeof navigator.canShare === "function" &&
-        navigator.canShare({ files: [] }),
-      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "n/a"
-    });
-  }, [ethicsData]);
 
   const gradientPosition = ethicsData ? calculateGradientPosition(ethicsData.ethicsScore) : 50;
   const donationRatioDisplay = ethicsData
@@ -120,19 +97,9 @@ export default function Ethics() {
 
   const handleShare = async () => {
     if (!ethicsData || !scoreCardRef.current || !shareCaptureRef.current || sharing) {
-      console.debug("[Ethics] Share blocked", {
-        hasEthicsData: Boolean(ethicsData),
-        hasScoreCard: Boolean(scoreCardRef.current),
-        hasShareCapture: Boolean(shareCaptureRef.current),
-        sharing
-      });
       return;
     }
 
-    console.debug("[Ethics] Share invoked", {
-      hasNavigatorShare: typeof navigator !== "undefined" && typeof navigator.share === "function",
-      canShareFiles: typeof navigator !== "undefined" && typeof navigator.canShare === "function"
-    });
     setSharing(true);
     setShareMessage(null);
 
@@ -142,7 +109,6 @@ export default function Ethics() {
     const shareUrl = shareBaseLink;
 
     if (typeof navigator === "undefined" || typeof navigator.share !== "function") {
-      console.warn("[Ethics] navigator.share unavailable");
       if (navigator?.clipboard?.writeText && shareUrl) {
         try {
           await navigator.clipboard.writeText(shareUrl);
@@ -162,9 +128,6 @@ export default function Ethics() {
       try {
         const { default: html2canvas } = await import("html2canvas");
         const cardBackground = getComputedStyle(scoreCardRef.current).backgroundColor;
-        console.debug("[Ethics] Capturing share image", {
-          background: cardBackground
-        });
         const canvas = await html2canvas(shareCaptureRef.current, {
           backgroundColor: cardBackground || "#12102a",
           useCORS: true,
@@ -201,12 +164,6 @@ export default function Ethics() {
 
       if (shareFile && navigator.canShare?.({ files: [shareFile] })) {
         shareData.files = [shareFile];
-        console.debug("[Ethics] Sharing with image attachment", {
-          fileName: shareFile.name,
-          fileSize: shareFile.size
-        });
-      } else {
-        console.debug("[Ethics] Sharing without image attachment");
       }
 
       await navigator.share(shareData);
