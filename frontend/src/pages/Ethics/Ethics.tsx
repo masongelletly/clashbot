@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import ActivePlayerBadge from "../../components/ActivePlayerBadge/ActivePlayerBadge";
 import { useActivePlayer } from "../../state/ActivePlayerContext";
@@ -61,6 +61,9 @@ export default function Ethics() {
   const [ethicsData, setEthicsData] = useState<CRTypes.EthicsCalculationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const scoreCardRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!displayPlayer?.playerTag) {
@@ -68,6 +71,7 @@ export default function Ethics() {
       return;
     }
 
+    setShareMessage(null);
     setLoading(true);
     setError(null);
     getEthicsScore(displayPlayer.playerTag)
@@ -89,6 +93,89 @@ export default function Ethics() {
   const donationScoreColor = ethicsData
     ? scoreColor(ethicsData.donationScore)
     : null;
+
+  const handleShare = async () => {
+    if (!ethicsData || !scoreCardRef.current || sharing) {
+      return;
+    }
+
+    setSharing(true);
+    setShareMessage(null);
+
+    const shareBaseLink = "https://www.clashbot.wtf";
+    const shareName = displayPlayer?.playerName ?? displayPlayer?.playerTag ?? "Player";
+    const shareTitle = `${shareName} Ethics Score`;
+    const shareText = `${shareName} Ethics Score: ${ethicsData.ethicsScore.toFixed(2)}\n${shareBaseLink}`;
+    const shareUrl = shareBaseLink;
+
+    if (typeof navigator === "undefined" || typeof navigator.share !== "function") {
+      if (navigator?.clipboard?.writeText && shareUrl) {
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          setShareMessage("Share not supported here. Link copied instead.");
+        } catch {
+          setShareMessage("Sharing isn't supported in this browser.");
+        }
+      } else {
+        setShareMessage("Sharing isn't supported in this browser.");
+      }
+      setSharing(false);
+      return;
+    }
+
+    try {
+      let shareFile: File | null = null;
+      try {
+        const { default: html2canvas } = await import("html2canvas");
+        const canvas = await html2canvas(scoreCardRef.current, {
+          backgroundColor: null,
+          useCORS: true,
+          scale: Math.min(window.devicePixelRatio || 1, 2),
+          ignoreElements: (element) =>
+            (element as HTMLElement).dataset?.shareIgnore === "true"
+        });
+
+        shareFile = await new Promise<File | null>((resolve) => {
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              resolve(null);
+              return;
+            }
+            const safeName = (displayPlayer?.playerName ?? displayPlayer?.playerTag ?? "player")
+              .replace(/[^a-z0-9]+/gi, "-")
+              .replace(/(^-|-$)/g, "")
+              .toLowerCase();
+            resolve(
+              new File([blob], `ethics-score-${safeName || "player"}.png`, {
+                type: "image/png"
+              })
+            );
+          }, "image/png");
+        });
+      } catch {
+        shareFile = null;
+      }
+
+      const shareData: ShareData = {
+        title: shareTitle,
+        text: shareText,
+        url: shareUrl
+      };
+
+      if (shareFile && navigator.canShare?.({ files: [shareFile] })) {
+        shareData.files = [shareFile];
+      }
+
+      await navigator.share(shareData);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return;
+      }
+      setShareMessage("Unable to open the share sheet right now.");
+    } finally {
+      setSharing(false);
+    }
+  };
 
   return (
     <div className="page ethics">
@@ -125,8 +212,31 @@ export default function Ethics() {
           </section>
         ) : ethicsData ? (
           <>
-            <section className="page__card ethics__card">
-              <h2>Ethics Score</h2>
+            <section className="page__card ethics__card" ref={scoreCardRef}>
+              <div className="ethics__card-header">
+                <h2>Ethics Score</h2>
+                <div className="ethics__share-actions" data-share-ignore="true">
+                  <button
+                    className="ethics__share-button"
+                    type="button"
+                    onClick={handleShare}
+                    disabled={sharing}
+                    aria-label="Share ethics score"
+                  >
+                    {sharing ? "Sharing..." : "Share"}
+                  </button>
+                </div>
+              </div>
+              {shareMessage && (
+                <div
+                  className="ethics__share-status"
+                  role="status"
+                  aria-live="polite"
+                  data-share-ignore="true"
+                >
+                  {shareMessage}
+                </div>
+              )}
               <div className="ethics__score-display">
                 <div className="ethics__score-value">{ethicsData.ethicsScore.toFixed(2)}</div>
                 <div className="ethics__score-breakdown">
