@@ -182,12 +182,6 @@ export default function Ethics() {
           <>
             <section className="page__card ethics__card">
               <h2>Ethics Score</h2>
-              <div className="ethics__overview" aria-live="polite">
-                <div className="ethics__overview-label">Clashbot AI</div>
-                <p className={overviewHasIssue ? "ethics__overview-text ethics__overview-text--error" : "ethics__overview-text"}>
-                  {overviewCopy}
-                </p>
-              </div>
               <div className="ethics__score-display">
                 <div className="ethics__score-value">{ethicsData.ethicsScore.toFixed(2)}</div>
                 <div className="ethics__score-breakdown">
